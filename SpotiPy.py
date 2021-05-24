@@ -283,7 +283,7 @@ while True:
 
 	command = str(input('>>> '))
 
-	if '.play' in command:
+	if '.play ' in command:
 		if len(now_playing) == 0:
 			song = command [6 : ]
 			now_playing.append(song)
@@ -337,7 +337,7 @@ while True:
 	'''
 	
 	if '.playnext' in command:
-		song = command [6 : ]
-		queue.insert(1, song)
+		song = command [10 : ]
+		queue.insert(0, song)
 		print('---updating queue\n>>>')
 		threading._start_new_thread(update_queue, ())
