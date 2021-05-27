@@ -65,16 +65,15 @@ def get_track(name):
         return None
 
 def show_recommendations_for_track(track):
-	reclist = []
-	results = spot.recommendations(seed_tracks=[track['id']], limit=1)
+	results = spot.recommendations(seed_tracks=[track], limit=1)
 	for track in results['tracks']:
 		track_name = f"{track['artists'][0]['name']} - {track['name']}"
-		reclist.append(track_name)
-	return reclist[0]
+		track_id = track ['id']
+	return track_name, track_id
 
 def put_notification(song):
 
-	image_urls, album_name, artists, track, track_id = get_metadata(song)
+	image_urls, album_name, artists, track = get_metadata(song)
 	formatted_track = track.replace(' ', '_')
 	get_image(image_urls ['high'], formatted_track)
 	Notification(
@@ -84,8 +83,19 @@ def put_notification(song):
 		duration = 5,                              												  
 		urgency = 'normal'
 	).send()
-	
 
+def put_next_notification(song):
+
+	image_urls, album_name, artists, track = get_metadata(song)
+	formatted_track = track.replace(' ', '_')
+	get_image(image_urls ['high'], formatted_track)
+	Notification(
+		title = "Next Song:",
+		description = f'{track}\n{artists}\n{album_name}',
+		icon_path = (os.path.join(spotipy_dir, 'queue', 'cover_art_dir', 'img.png')), # On Windows .png is required, on Linux - .png
+		duration = 5,                              												  
+		urgency = 'normal'
+	).send()
 
 def get_image(image_url, song):
 	if os.name == 'nt':
@@ -98,29 +108,28 @@ def get_image(image_url, song):
 		le_image.write(image_data.content)
 		le_image.close()
 
-def get_metadata(song_name):
-    track = spot.search(song_name)
+def get_metadata(song_id):
+    track = spot.track(song_id)
 
 
     quality = ['high', 'mid', 'low']
     counter = 0
     images = {}
-    for image_dict in track ['tracks'] ['items'] [0] ['album'] ['images']:
+    for image_dict in track ['album'] ['images']:
 
         images [quality [counter]] = image_dict ['url']
         counter += 1
 
-    album_name = track ['tracks'] ['items'] [0] ['album'] ['name']
+    album_name = track ['album'] ['name']
 
     artists = []
-    artists_list = track ['tracks'] ['items'] [0] ['artists']
+    artists_list = track ['artists']
     for dictionary in artists_list:
         artists.append(dictionary ['name'])
     artists = ' & '.join(artists)
 
-    track_name = track ['tracks'] ['items'] [0] ['name']
-    track_id = track ['tracks'] ['items'] [0] ['id']
-    return images, album_name, artists, track_name, track_id
+    track_name = track ['name']
+    return images, album_name, artists, track_name
 
 def check_empty_queue():
 	while True:
@@ -185,8 +194,14 @@ def queue_check():
 			song_with_ext = song + '.mp3'
 			if os.path.exists(os.path.join(music_dir, song_with_ext)) == False and os.path.exists(os.path.join(queue_dir, song_with_ext)) == False:
 				print('\n--- this song is not downloaded, downloading it now \n>>> ', end = '')
+				id = None
 				get_music(song, None, 'queue')
-				
+				if id == None:
+					track = get_track(song)
+				rec_song_name, rec_song_id = show_recommendations_for_track(track['id'])
+				print(rec_song_name)
+				queue.append(rec_song_name)
+				threading._start_new_thread(update_queue, ())
 				#threading._start_new_thread(ffplay, (f"{queue_dir}{ye_slash}{song}.mp3", ))
 
 				#play_thread = threading.Thread(group = None, target = ffplay, name = None, args = (f"{queue_dir}{ye_slash}{song}.mp3", ), kwargs = None, daemon = None)
@@ -197,9 +212,12 @@ def queue_check():
 				#		break
 
 				print(f'--- playing {song} \n>>> ', end = '')
-				
-				put_notification(song)
-				
+				if id == None:
+					put_notification(track)
+				else:
+					put_notification(id)
+				id = rec_song_id
+				put_next_notification(id)
 				ffplay(f"{queue_dir}{ye_slash}{song}.mp3")
 				
 				print(f'\n--- done playing {song}\n>>> ', end = '')
@@ -207,12 +225,6 @@ def queue_check():
 				os.remove(os.path.join(queue_dir, song_with_ext))
 				time.sleep(0.9)
 				now_playing.clear()
-				track = get_track(song)
-				autoplay = show_recommendations_for_track(track)
-				print(autoplay)
-				queue.append(autoplay)
-				print('---updating queue\n>>>')
-				threading._start_new_thread(update_queue, ())
 
 			elif os.path.exists(os.path.join(music_dir, song_with_ext)):
 				print(f'\n--- this song is already downloaded in the music dir, so playing it now')
@@ -225,20 +237,23 @@ def queue_check():
 				#while True:
 				#	if not play_thread.is_alive:
 				#		break
-				
+				if id == None:
+					track = get_track(song)
+				rec_song_name, rec_song_id = show_recommendations_for_track(track['id'])
+				id = rec_song_id
+				print(rec_song_name)
+				queue.append(rec_song_name)
+				threading._start_new_thread(update_queue, ())
 				print('--- playing audio \n>>> ', end = '')
 				
-				put_notification(song)
-
+				if id == None:
+					put_notification(track)
+				else:
+					put_notification(id)
+				
 				ffplay(f"{music_dir}{ye_slash}{song}.mp3")
 				print(f'\n--- done playing {song}\n>>> ', end = '')
 				now_playing.clear()
-				track = get_track(song)
-				autoplay = show_recommendations_for_track(track)
-				print(autoplay)
-				queue.append(autoplay)
-				print('---updating queue\n>>>')
-				threading._start_new_thread(update_queue, ())
 
 			else:
 
@@ -252,10 +267,23 @@ def queue_check():
 				#while True:
 				#	if not play_thread.is_alive:
 				#		break
-
+				id = None
+				if id == None:
+					track = get_track(song)
+					rec_song_name, rec_song_id = show_recommendations_for_track(track['id'])
+				else:
+					track = get_track(song)
+					rec_song_name, rec_song_id = show_recommendations_for_track(id)
+				id = rec_song_id
+				print(rec_song_name)
+				queue.append(rec_song_id)
+				threading._start_new_thread(update_queue, ())
 				print('--- playing audio \n>>> ', end = '')
 
-				put_notification(song)
+				if id == None:
+					put_notification(track)
+				else:
+					put_notification(id)
 				
 				ffplay(f"{queue_dir}{ye_slash}{song}.mp3")
 				print(f'\n--- done playing {song}\n>>> ', end = '')
@@ -267,12 +295,6 @@ def queue_check():
 				os.remove(os.path.join(queue_dir, song_with_ext))
 				time.sleep(0.9)
 				now_playing.clear()
-				track = get_track(song)
-				autoplay = show_recommendations_for_track(track)
-				print(autoplay)
-				queue.append(autoplay)
-				print('---updating queue\n>>>')
-				threading._start_new_thread(update_queue, ())
 
 		time.sleep(1)
 
