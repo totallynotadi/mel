@@ -5,33 +5,6 @@ import urllib.request
 import requests
 import re
 
-try:
-	import ffpyplayer
-except:
-	os.system('python3 -m pip install ffpyplayer')
-from ffpyplayer.player import MediaPlayer
-
-try:
-	from youtube_dl import YoutubeDL
-except:
-	os.system('python3 -m pip install youtube_dl')
-from youtube_dl import YoutubeDL
-
-try:
-	import spotipy
-except:
-	os.system('python3 -m pip install spotipy')
-from spotipy.oauth2 import SpotifyClientCredentials
-import spotipy
-
-try:
-	from pynotifier import Notification
-except Exception:
-	os.system('python3 -m pip install py-notifier')	
-from pynotifier import Notification
-
-# TO-DO
-#
 #handle exceptions well
 #help command
 
