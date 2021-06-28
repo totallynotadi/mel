@@ -4,30 +4,7 @@ import threading
 import urllib.request
 import requests
 import re
-try:
-	import ffpyplayer
-except:
-	os.system('python -m pip install ffpyplayer')
-from ffpyplayer.player import MediaPlayer
 
-try:
-	from youtube_dl import YoutubeDL
-except:
-	os.system('python -m pip install youtube_dl')
-from youtube_dl import YoutubeDL
-
-try:
-	import spotipy
-except:
-	os.system('python -m pip install spotipy')
-from spotipy.oauth2 import SpotifyClientCredentials
-import spotipy
-
-from pynotifier import Notification
-
-
-# TO-DO
-#
 #handle exceptions well
 #help command
 
@@ -47,7 +24,6 @@ else:
 
 global spotipy_dir
 spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy').replace(no_slash, ye_slash)
-spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
 
 if not os.path.exists(spotipy_dir):
 	os.mkdir(spotipy_dir)
@@ -77,11 +53,11 @@ def put_notification(song):
 	formatted_track = track.replace(' ', '_')
 	get_image(image_urls ['high'], formatted_track)
 	Notification(
-		title = track,
-		description = f'{artists}\n{album_name}',
-		icon_path = (os.path.join(spotipy_dir, 'queue', 'cover_art_dir', 'img.png')), # On Windows .png is required, on Linux - .png
-		duration = 5,                              												  
-		urgency = 'normal'
+    title = track,
+    description = artists,
+	icon_path = image_path, # On Windows .ico is required, on Linux - .png
+    duration = 7,									 # Duration in seconds
+    urgency = 'low'
 	).send()
 
 def put_next_notification(song):
@@ -98,27 +74,23 @@ def put_next_notification(song):
 	).send()
 
 def get_image(image_url, song):
-	if os.name == 'nt':
-		extension = '.png'
-	else:
-		extension = '.png'
 
 	image_data = requests.get(image_url)
-	with open(os.path.join(spotipy_dir, 'queue', 'cover_art_dir', 'img' + extension), 'wb') as le_image:
+	with open(os.path.join(spotipy_dir, 'queue', 'cover_art_dir', song + 'png'), 'wb') as le_image:
 		le_image.write(image_data.content)
 		le_image.close()
 
 def get_metadata(song_id):
     track = spot.track(song_id)
 
+		for image_dict in track ['tracks'] ['items'] [0] ['album'] ['images']:
 
     quality = ['high', 'mid', 'low']
     counter = 0
     images = {}
     for image_dict in track ['album'] ['images']:
 
-        images [quality [counter]] = image_dict ['url']
-        counter += 1
+		album_name = track ['tracks'] ['items'] [0] ['album'] ['name']
 
     album_name = track ['album'] ['name']
 
@@ -134,8 +106,10 @@ def get_metadata(song_id):
 def check_empty_queue():
 	while True:
 		if len(now_playing) == 0 and len(queue) != 0:
+			print('shifting songs')
 			now_playing.append(queue [0])
 			queue.remove(queue [0])
+		time.sleep(1)
 
 def ffplay(path):
 
@@ -152,7 +126,7 @@ def ffplay(path):
 
 def update_queue():
 	for song in queue:
-		if os.path.exists(f'{music_dir}{ye_slash}{song}.png') == False and os.path.exists(f'{queue_dir}{ye_slash}{song}.mp3') == False:
+		if os.path.exists(f'{music_dir}{ye_slash}{song}.wav') == False and os.path.exists(f'{queue_dir}{ye_slash}{song}.wav') == False:
 			threading._start_new_thread(get_music, (song, None, 'queue'))
 
 def get_music(search_term, save_as, out_dir):
@@ -174,11 +148,11 @@ def get_music(search_term, save_as, out_dir):
 	#webbrowser.open_new_tab(le_url)
 
 	audio_downloder = YoutubeDL({'extractaudio' : True,
-								'audioformat' : 'mp3',
-								'audioquality' : 256,
-								'format':'bestaudio',
-								'outtmpl': f'{download_path}.mp3',
-								'quiet' : True}) 	
+								 'audioformat' : 'wav',
+								 'audioquality' : 256,
+								 'format':'bestaudio',
+								 'outtmpl': f'{download_path}.wav',
+								 'quiet' : True}) 	
 
 	audio_downloder.extract_info(le_url)
 
@@ -191,7 +165,7 @@ def queue_check():
 
 	while True:
 		for song in now_playing:
-			song_with_ext = song + '.mp3'
+			song_with_ext = song + '.wav'
 			if os.path.exists(os.path.join(music_dir, song_with_ext)) == False and os.path.exists(os.path.join(queue_dir, song_with_ext)) == False:
 				print('\n--- this song is not downloaded, downloading it now \n>>> ', end = '')
 				id = None
@@ -221,9 +195,9 @@ def queue_check():
 				ffplay(f"{queue_dir}{ye_slash}{song}.mp3")
 				
 				print(f'\n--- done playing {song}\n>>> ', end = '')
-				
+			
 				os.remove(os.path.join(queue_dir, song_with_ext))
-				time.sleep(0.9)
+
 				now_playing.clear()
 
 			elif os.path.exists(os.path.join(music_dir, song_with_ext)):
@@ -253,6 +227,7 @@ def queue_check():
 				
 				ffplay(f"{music_dir}{ye_slash}{song}.mp3")
 				print(f'\n--- done playing {song}\n>>> ', end = '')
+
 				now_playing.clear()
 
 			else:
@@ -287,13 +262,13 @@ def queue_check():
 				
 				ffplay(f"{queue_dir}{ye_slash}{song}.mp3")
 				print(f'\n--- done playing {song}\n>>> ', end = '')
-				
+
 				#keyboard.press(Key.enter)
 				#
 				# keyboard.release(Key.enter)
 
 				os.remove(os.path.join(queue_dir, song_with_ext))
-				time.sleep(0.9)
+
 				now_playing.clear()
 
 		time.sleep(1)
@@ -305,7 +280,7 @@ while True:
 
 	command = str(input('>>> '))
 
-	if '.play ' in command:
+	if '.play' in command:
 		if len(now_playing) == 0:
 			song = command [6 : ]
 			now_playing.append(song)
@@ -335,11 +310,16 @@ while True:
 
 	if '.skip' in command:
 		player.toggle_pause()
-		player.seek(player.get_metadata() ['duration'] - 5)
-		time.sleep(6)
-		now_playing.clear()
+		player.seek(player.get_metadata() ['duration'] - 2)
+		player.toggle_pause()
+		#print(f'now playing before the skip command : {now_playing}')
+		#print(f'queue lsit before the skip command : {queue}')
+		#now_playing.clear()
+		#print(f'now playing after the skip command : {now_playing}')
+		#print(f'queue list after the skip command : {queue}')
+		time.sleep(2.5)
+		#print('cleared the now_playing list')
 		print('\r')
-		continue
 
 	#if '.playlist' in command:
 	#	play
@@ -347,19 +327,3 @@ while True:
 	if '.quit' in command:
 		break
 		exit()
-	'''
-	if '.autoplay' in command:
-		song = command [10 : ]
-		now_playing.append(song)
-		track = get_track(song)
-		autoplay = show_recommendations_for_track(track)
-		queue.append(autoplay[0])
-		print('---updating queue\n>>>')
-		threading._start_new_thread(update_queue, ())
-	'''
-	
-	if '.playnext' in command:
-		song = command [10 : ]
-		queue.insert(0, song)
-		print('---updating queue\n>>>')
-		threading._start_new_thread(update_queue, ())
