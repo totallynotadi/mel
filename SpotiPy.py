@@ -40,17 +40,22 @@ from pynotifier import Notification
 # listen with frands
 # play/search by genre/artist
 
+#region Global Variables
 
+#No idea wtf this exists help Adi
 global prev_track
 prev_track = None
 
-#global spot
-#spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
+#Change this to copy users credentials
+global spot
+spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
 
+#Recommendations list
 global recommendations
 recommendations = []
 recommendations.append('placeholder')
 
+#Lists for the queue and the now playing song
 global queue
 global now_playing
 queue = []
@@ -59,6 +64,7 @@ now_playing = []
 global status_dir
 status_dir = {}
 
+#Code directory initialisation.
 global spotipy_dir
 spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
 if not os.path.exists(spotipy_dir):
@@ -68,6 +74,9 @@ if not os.path.exists(spotipy_dir):
 	os.mkdir(os.path.join(spotipy_dir, 'cover_art_dir'))
 	os.mkdir(os.path.join(spotipy_dir, 'playlists'))
 
+#endregion
+
+#region Functions
 def socket_handler():
 	SEPARATOR = '<SEPARATOR>'
 
@@ -86,14 +95,16 @@ def socket_handler():
 
 	pass
 
-def skip():
+#Command to skip song but currently broken. Do not use this command, breaks the script
+'''def skip():
 	player.set_mute(True)
 	player.toggle_pause()
 	player.seek(player.get_metadata() ['duration'] - 2)
 	player.toggle_pause()
 	time.sleep(2.2)
 	player.set_mute(False)
-
+'''
+#Deletes song after playing
 def watch_thread(song):
 	song_path = os.path.join(queue_dir, song + '.wav')
 	while True:
@@ -103,6 +114,7 @@ def watch_thread(song):
 			break
 	time.sleep(5)
 
+#Manages the recommendations list
 def manage_recommendations():
 	global prev_change_flag
 	prev_change_flag = False
@@ -124,6 +136,7 @@ def manage_recommendations():
 			print('--- done \n>>> ', end = ' ')
 		time.sleep(1.75)
 
+#Manages the autoplay feature
 def handle_autoplay():
 	while True:
 		if len(now_playing) == 0 and len(queue) == 0 and prev_track != None:
@@ -132,8 +145,8 @@ def handle_autoplay():
 			recommendations.remove(recommendations [0])
 		time.sleep(1.75)
 
+#Gets recommensations for autoplay
 def get_recs(name):
-	spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
 	track_results = spot.search(name)
 
 	items = track_results['tracks']['items']
@@ -161,6 +174,7 @@ def get_recs(name):
 		
 		print('\r--- thread starte \n>>> ', end = ' ')
 
+#Notifies whenever a song starts playing
 def put_notification(song):
 
 	image_urls, album_name, artists, track = get_metadata(song)
@@ -182,18 +196,18 @@ def put_notification(song):
     urgency = 'normal'
 	).send()
 	
-
+#Gets the image from the Spotify API
 def get_image(image_url, song):
 	image_data = requests.get(image_url)
 	with open(os.path.join(spotipy_dir, 'cover_art_dir', song + '.png'), 'wb') as le_image:
 		le_image.write(image_data.content)
 		le_image.close()
 
+#Gets the metadata for the currently playing 
 def get_metadata(song_name):
 	try:
 		search_str = song_name
 
-		spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
 
 		track = spot.search(search_str)
 
@@ -223,6 +237,7 @@ def get_metadata(song_name):
 	except Exception:
 		return None, None, song_name.split(' ') [0], song_name
 
+#Checks if the queue is empty
 def check_empty_queue():
 	while True:
 		if len(now_playing) == 0 and len(queue) != 0:
@@ -231,6 +246,7 @@ def check_empty_queue():
 			queue.remove(queue [0])
 		time.sleep(1)
 
+#Initialises FFPyPlayer
 def ffplay(path):
 
 	global player
@@ -245,6 +261,7 @@ def ffplay(path):
 	player.toggle_pause()
 	player.close_player()
 
+#Updates the queue and downloads the songs in the queue
 def update_queue():
 	for song in queue:
 		if os.path.exists(os.path.join(queue_dir, song + '.wav')) == False and os.path.exists(os.path.join(music_dir, song + '.wav')) == False and os.path.exists(os.path.join(queue_dir, song + '.wav.part')) == False:
@@ -253,6 +270,7 @@ def update_queue():
 			print('\r--- song already downloaded, so not doing it again \n>>> ', end = ' ')
 			status_dir [song] = 'downloaded'
 
+#Downloads the song from YouTube
 def get_music(search_term, save_as, out_dir, sleep_val=0):
 	alpha_list = list(string.printable) [ : -6]
 	alpha_list.remove('/')
@@ -300,6 +318,7 @@ def get_music(search_term, save_as, out_dir, sleep_val=0):
 		print(e)
 		pass
 
+#Checks the queue for songs
 def queue_check():
 	global music_dir
 	global queue_dir
@@ -375,6 +394,9 @@ threading._start_new_thread(check_empty_queue, ())
 threading._start_new_thread(manage_recommendations, ())
 threading._start_new_thread(handle_autoplay, ())
 
+#endregion
+
+#region Input
 while True:
 
 	command = str(input('\r>>> '))
@@ -489,3 +511,4 @@ while True:
 				time.sleep(1.65)
 		break
 		exit()
+#endregion
