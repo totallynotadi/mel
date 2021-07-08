@@ -117,7 +117,7 @@ def parse_opts(command):
 		try:
 			song = int(song)
 			print(song)
-			song = search_dict ['search_content'] [song]
+			song = search_dict ['search_content'] [song]	
 			print(song)
 			search.clear()
 		except Exception:
@@ -412,71 +412,34 @@ def queue_check():
 
 	while True:
 		for song in now_playing:
-			# print(status_dir)
-			while status_dir [song] == 'downloading' or 'queueholder' in queue:
-				time.sleep(2)
+			while status_dir [song] == 'downloading':
+				time.sleep(5.0)
 			song_with_ext = song + '.wav'
 			if os.path.exists(os.path.join(music_dir, song_with_ext)) == False and os.path.exists(os.path.join(queue_dir, song_with_ext)) == False:
-				print(f'\r--- {song} is not downloaded, downloading it now \n>>> ', end = '')
-				
-				#threading._start_new_thread(get_music, (song, None, 'queue', 0, True, ))
-				get_music(song, None, 'queue', 0, True)
-				#time.sleep(10)
-
-				print(f'\r--- playing {song} \n>>> ', end = '') 
-
-				put_notification(song)
-
-				ffplay(os.path.join(queue_dir, song + '.wav'))
-
-				print(f'\r--- done playing {song}\n>>> ', end = '')
-
-				thread = threading.Thread(target = watch_thread, args = (song, ))
-				thread.start()
-				# os.remove(os.path.join(queue_dir, song_with_ext))
-
-				time.sleep(0.5)
-
-				now_playing.clear()
-
-			elif os.path.exists(os.path.join(music_dir, song_with_ext)):
-				print(f'\r--- this song is already downloaded in the music dir, so playing it now \n>>> ', end=' ')
-
-				print('\r--- playing audio \n>>> ', end='')
-
-				put_notification(song)
-
-				ffplay(os.path.join(music_dir, song + '.wav'))
-
-				print(f'\r--- done playing {song}\n>>> ', end='')
-				time.sleep(0.5)
-
-				now_playing.clear()
-				time.sleep(0.5)
-
+				print("Song dowloading since it isn't already downloaded.")
+				get_music(song, None, 'queue')
 			else:
+				print("Song already downloaded, playing now.")
+	
+			print(f'\r--- playing {song} \n>>> ', end = '')
+				
+			put_notification(song)
+				
+			ffplay(os.path.join(queue_dir, song + '.wav'))
 
-				print('\r--- this song is already downloaded in the queue dir, so playing it now \n>>> ', end = ' ')
+			print(f'\r--- done playing {song}\n>>> ', end = '')
 
-				print('\r--- playing audio \n>>> ', end = ' ')
+			thread = threading.Thread(target = watch_thread, args = (song, ), daemon = True)
+			thread.start()
 
-				put_notification(song)
+			time.sleep(0.5)
 
-				ffplay(os.path.join(queue_dir, song + '.wav'))
-				print(f'\r--- done playing {song}\n>>> ', end = '')
+			now_playing.clear()
+				
 
-				thread = threading.Thread(target = watch_thread, args = (song, ))
-				thread.start()
-				# os.remove(os.path.join(queue_dir, song_with_ext))
-
-				now_playing.clear()
-				time.sleep(0.5)
-
-			if song in list(status_dir.keys()):
-				del status_dir[song]
+			del status_dir [song]
 
 		time.sleep(1)
-
 
 threading._start_new_thread(queue_check, ())
 threading._start_new_thread(check_empty_queue, ())
