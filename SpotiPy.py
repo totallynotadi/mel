@@ -332,58 +332,26 @@ def queue_check():
 				time.sleep(5.0)
 			song_with_ext = song + '.wav'
 			if os.path.exists(os.path.join(music_dir, song_with_ext)) == False and os.path.exists(os.path.join(queue_dir, song_with_ext)) == False:
-				print(f'\r--- {song} is not downloaded, downloading it now \n>>> ', end = '')
+				print("Song dowloading since it isn't already downloaded.")
 				get_music(song, None, 'queue')
-	
-				print(f'\r--- playing {song} \n>>> ', end = '')
-				
-				put_notification(song)
-				
-				ffplay(os.path.join(queue_dir, song + '.wav'))
-
-				print(f'\r--- done playing {song}\n>>> ', end = '')
-
-				thread = threading.Thread(target = watch_thread, args = (song, ), daemon = True)
-				thread.start()
-				#os.remove(os.path.join(queue_dir, song_with_ext))
-
-				time.sleep(0.5)
-
-				now_playing.clear()
-				
-			elif os.path.exists(os.path.join(music_dir, song_with_ext)):
-				print(f'\r--- this song is already downloaded in the music dir, so playing it now \n>>> ', end = ' ')
-
-				print('\r--- playing audio \n>>> ', end = '')
-
-				put_notification(song)
-
-				ffplay(os.path.join(music_dir, song + '.wav'))
-
-				print(f'\r--- done playing {song}\n>>> ', end = '')
-				time.sleep(0.5)
-
-				now_playing.clear()
-				time.sleep(0.5)
-
 			else:
+				print("Song already downloaded, playing now.")
+	
+			print(f'\r--- playing {song} \n>>> ', end = '')
+				
+			put_notification(song)
+				
+			ffplay(os.path.join(queue_dir, song + '.wav'))
 
-				print(f'\r--- this song is already downloaded in the queue dir, so playing it now \n>>> ', end = ' ')
+			print(f'\r--- done playing {song}\n>>> ', end = '')
 
-				print('\r--- playing audio \n>>> ', end = '')
+			thread = threading.Thread(target = watch_thread, args = (song, ), daemon = True)
+			thread.start()
 
-				put_notification(song)
+			time.sleep(0.5)
 
-				ffplay(os.path.join(queue_dir, song + '.wav'))
-				print(f'\r--- done playing {song}\n>>> ', end = '')
-
-				thread = threading.Thread(target = watch_thread, args = (song, ), daemon = True)
-				thread.start()
-				#os.remove(os.path.join(queue_dir, song_with_ext))
-				time.sleep(0.5)
-
-				now_playing.clear()
-				time.sleep(0.5)
+			now_playing.clear()
+				
 
 			del status_dir [song]
 
@@ -431,7 +399,7 @@ while True:
 				#	thread.start()
 				queue.insert(0, song)
 				status_dir [song] = 'downloaded'
-				skip()
+				#skip()
 			else:
 				now_playing.append(song)
 			status_dir [song] = 'downloaded'
@@ -465,9 +433,7 @@ while True:
 	elif '.pause' in command:
 		player.toggle_pause()
 
-	elif '.skip' in command:
-		skip()
-
+	
 	elif '.setvol' in command:
 		vol = int(command.split(' ', 1)[1]) / 100
 		print(f'vol : {vol}')
