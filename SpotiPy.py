@@ -524,22 +524,6 @@ while True:
 	elif '.pause' in command:
 		player.toggle_pause()
 
-	elif '.skip' in command:
-		skip_time = command[6:]
-		
-		if len(skip_time) == 0 or skip_time == []:
-			skip()
-		else:
-			print(f'current pts : {player.get_pts()}')
-			print(f'total duration : {player.get_metadata() ["duration"]}')
-			target_time = player.get_pts() + int(skip_time)
-			if target_time > player.get_metadata()['duration']:
-				skip()
-			else:
-				player.toggle_pause()
-				player.seek(target_time)
-				player.toggle_pause()
-
 	elif '.setvol' in command:
 		print(f'--- current volume is : {vol}')
 		vol = int(command.split(' ', 1)[1])
