@@ -15,7 +15,7 @@ A command-line(for now) tool to play and download music from YouTube. Made mainl
 - Group listening.
 
 ## Usage
-Download the code and run the Spotipy.py file.
+Download the code and run the main.py file.
 
 ### Commands
 - .play \<Song Name> - Plays the top result for the search term.
