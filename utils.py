@@ -15,7 +15,7 @@ import pafy
 from pynotifier import Notification
 import tqdm
 import fuzzy_recs
-from utils import *
+import math
 #endregion
 
 #region Global Variables
@@ -54,6 +54,8 @@ status_dir = {}
 
 global spotipy_dir
 spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
+queue_dir = os.path.join(os.path.expanduser('~'), 'queue')
+music_dir = os.path.join(os.path.expanduser('~'), 'music')
 #endregion
 def centre(string, length, character = " "):
     return character * int((length - len(string)) / 2) + string + character * math.ceil((length - len(string)) / 2)
@@ -137,7 +139,7 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 
 		song = pafy.new(le_url)
 		best = song.getbestaudio()
-		best.download(filepath=f"{formatted_search_term}{best.ext}")
+		best.download(filepath=f"{formatted_search_term}{best.extension}")
 
 		status_dir[search_term] = 'downloaded'
 	except Exception as e:
@@ -146,12 +148,6 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 		#traceback.print_exc()
 		print(e)
 		pass
-
-def skip():
-	player.set_mute(True)
-	player.toggle_pause()
-	player.seek(player.get_metadata()['duration'] - 3)
-	player.toggle_pause()
 #endregion
 #region Autoplay Functions
 def parse_opts(command):
@@ -174,7 +170,7 @@ def parse_opts(command):
 				 else:	song = search_dict ['playing_playlist'] [song]
 			else:
 				song = search_dict ['search_content'] [song]
-		except Exception as e:
+		except:
 			pass
 
 	return song, no_auto
@@ -196,7 +192,6 @@ def watch_thread(song):
 	while song != 'placeholder' and (song in list(status_dir.keys())):
 		if status_dir [song] == 'downloaded':
 			time.sleep(1)
-			print(f'\rdeleted {song_path} \n>>> ', end = ' ')
 			if song in list(status_dir.keys()):
 				del status_dir[song]
 			break
@@ -320,15 +315,6 @@ def get_metadata(song_name):
 		return None, None, song_name.split(' ')[0], song_name
 #endregion
 #region Management
-def manage_stream():
-	while True:
-		command = input('\r>>> ')
-		if '.stop' in command:
-			skip()
-			break
-
-		elif '.nowp' in command:
-			[print(f'\r--- {song} \n>>> ', end = ' ') for song in now_playing]
 
 def update_queue():
 	for song in queue:
