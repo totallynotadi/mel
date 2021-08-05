@@ -1,4 +1,5 @@
 from utils import *
+import discord_rpc
 print("""
 Welcome to Melodine. \n
 Melodine is a simple command line tool to play and download music.\n
@@ -31,7 +32,7 @@ def ffplay(song):
 	player.toggle_pause()
 	time.sleep(5)
 	player.toggle_pause()
-
+	discord_rpc.run(video.title)
 	last_pts = 0
 	updated_pts = 0
 	while True:
