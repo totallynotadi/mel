@@ -61,12 +61,7 @@ def centre(string, length, character = " "):
     return character * int((length - len(string)) / 2) + string + character * math.ceil((length - len(string)) / 2)
 
 def make_table(rows, labels = None, centered = False):
-    Horizontal = "─"
     Vertical = "│"
-    Down_Right = "┌"
-    Down_Left = "┐"
-    Up_Right = "└"
-    Up_Left = "┘"
     Vertical_Right = "├"
     Vertical_Left = "┤"
     Down_Horizontal = "┬"
@@ -127,7 +122,6 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 		spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
 
 		music_dir = os.path.join(spotipy_dir, out_dir)
-		download_path = os.path.join(music_dir, search_term)
 		formatted_search_term = filter_search_term.replace(' ', '+')
 
 		html = urllib.request.urlopen(
@@ -139,7 +133,7 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 
 		song = pafy.new(le_url)
 		best = song.getbestaudio()
-		best.download(filepath=f"{formatted_search_term}{best.extension}")
+		best.download(filepath=f"{music_dir}/{formatted_search_term}{best.extension}")
 
 		status_dir[search_term] = 'downloaded'
 	except Exception as e:
