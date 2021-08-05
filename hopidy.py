@@ -112,6 +112,21 @@ def check_empty_queue():
 					print(f"playing from {search_dict ['search_type']}: {search_dict ['playing_from'] [1]}")
 				print(search_dict ['playing_from'])
 		time.sleep(1)
+def skip():
+	player.set_mute(True)
+	player.toggle_pause()
+	player.seek(player.get_metadata()['duration'] - 3)
+	player.toggle_pause()
+def manage_stream():
+	while True:
+		command = input('\r>>> ')
+		if '.stop' in command:
+			skip()
+			break
+
+		elif '.nowp' in command:
+			[print(f'\r--- {song} \n>>> ', end = ' ') for song in now_playing]
+
 threading._start_new_thread(queue_check, ())
 threading._start_new_thread(check_empty_queue, ())
 if autoplay:
@@ -146,6 +161,23 @@ while True:
 		if not no_auto and autoplay == True:
 				prev_track = song
 				prev_change_flag = True
+
+	elif '.list' in command:
+		index = int(command.split(' ', 1) [1])
+		content_dict = search_dict ['search_content']
+
+		selected = list(content_dict.keys()) [index]
+		key_id = content_dict [selected]
+
+		search_dict ['loaded_playlist'].clear()
+
+		table_rows = []
+		if search_dict ['search_type'] == 'playlists':
+			le_playlist = spot.playlist_items(key_id) ['items']
+			for index, song in enumerate(le_playlist):
+				song_name = f"{song ['track'] ['name']} - {song ['track'] ['artists'] [0] ['name']}"
+				search_dict ['loaded_playlist'].append(song_name)
+				table_rows.append([f"{index}", f"{song ['track'] ['name']}", f"{' & '.join([artist ['name'] for artist in song ['track'] ['artists']])}"])	
 
 	elif '.play' in command:
 		command = command [6 : ]
@@ -318,23 +350,6 @@ while True:
 				centered = True
 			))
 
-	elif '.list' in command:
-		index = int(command.split(' ', 1) [1])
-		content_dict = search_dict ['search_content']
-
-		selected = list(content_dict.keys()) [index]
-		key_id = content_dict [selected]
-
-		search_dict ['loaded_playlist'].clear()
-
-		table_rows = []
-		if search_dict ['search_type'] == 'playlists':
-			le_playlist = spot.playlist_items(key_id) ['items']
-			for index, song in enumerate(le_playlist):
-				song_name = f"{song ['track'] ['name']} - {song ['track'] ['artists'] [0] ['name']}"
-				search_dict ['loaded_playlist'].append(song_name)
-				table_rows.append([f"{index}", f"{song ['track'] ['name']}", f"{' & '.join([artist ['name'] for artist in song ['track'] ['artists']])}"])	
-
 		elif search_dict ['search_type'] == 'albums':
 			for index, album_song in enumerate(spot.album_tracks(key_id) ['items']):
 				song_name = f"{album_song ['name']} - {album_song ['artists'] [0] ['name']}"
@@ -394,4 +409,3 @@ while True:
 			#watch_thread(song)
 			os.remove(os.path.join(queue_dir, song))
 		break
-		exit()
