@@ -1,17 +1,17 @@
 from utils import *
 import discord_rpc
 print("""
-Welcome to Melodine. \n
-Melodine is a simple command line tool to play and download music.\n
+Welcome to Melodine. 
+Melodine is a simple command line tool to play and download music.
 		
-    	.play <Song Name> - Plays the top result for the search term.\n
-    	.dload <Song Name> - Downloads the top result for the search term.\n
-    	.addq <Song Name> - Adds song to the end of the queue\n
-    	.showq - Displays queue\n
-    	.playnext - <Song Name> - Plays the top search result after the currently playing song.\n
-    	.nowp - Displays currently playing song.\n
+    	.play <Song Name> - Plays the top result for the search term.
+    	.dload <Song Name> - Downloads the top result for the search term.
+    	.addq <Song Name> - Adds song to the end of the queue
+    	.showq - Displays queue
+    	.playnext - <Song Name> - Plays the top search result after the currently playing song.
+    	.nowp - Displays currently playing song.
     	.quit - Exits the program gracefully."""
-)
+) 
 def ffplay(song):
 
 	global player
@@ -25,14 +25,14 @@ def ffplay(song):
 	video = pafy.new(video_ids[0])
 	best = video.getbestaudio()
 	url = best.url
-	duration = video.duration
 	opts = {'sync' : 'audio'}
 	player = MediaPlayer(url, ffopts = opts)
-	print(duration)
+	put_notification(song)
+	discord_rpc.set_status(video.title)
+	threading._start_new_thread(discord_rpc.update_discord(), ())
 	player.toggle_pause()
-	time.sleep(5)
+	time.sleep(1)
 	player.toggle_pause()
-	discord_rpc.run(video.title)
 	last_pts = 0
 	updated_pts = 0
 	while True:
@@ -60,7 +60,6 @@ def queue_check():
 	music_dir = os.path.join(spotipy_dir, 'music')
 	queue_dir = os.path.join(spotipy_dir, 'queue')
 	playlist_dir = os.path.join(spotipy_dir, 'playlists')
-
 	while True:
 		for song in now_playing:
 			if song == 'placeholder':
@@ -73,8 +72,6 @@ def queue_check():
 				#print("\r--- song already downloaded, playing now. \n>>>", end = ' ')
 	
 			print(f'\r--- playing {song} \n>>> ', end = '')
-				
-			put_notification(song)
 				
 			ffplay(song)
 
@@ -91,6 +88,7 @@ def queue_check():
 
 		time.sleep(1)
 def check_empty_queue():
+	
 	while True:
 		if len(now_playing) == 0:
 			if len(queue) != 0:
@@ -127,9 +125,10 @@ def manage_stream():
 
 		elif '.nowp' in command:
 			[print(f'\r--- {song} \n>>> ', end = ' ') for song in now_playing]
-
 threading._start_new_thread(queue_check, ())
 threading._start_new_thread(check_empty_queue, ())
+	
+
 if autoplay:
 	threading._start_new_thread(manage_recommendations, ())
 	threading._start_new_thread(handle_autoplay, ())

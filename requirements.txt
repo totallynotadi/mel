@@ -5,4 +5,4 @@ py-notifier
 fuzzysearch
 pafy
 tqdm
-discordsdk
+pypresence
