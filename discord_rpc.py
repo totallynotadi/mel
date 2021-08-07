@@ -1,34 +1,20 @@
 import time
 
-import discordsdk as dsdk
+import pypresence 
+client_id = 872801340601040916
+RPC = pypresence.Presence(client_id=client_id)
+RPC.connect()
 
-app = dsdk.Discord(872801340601040916, dsdk.CreateFlags.default)
-
-activity_manager = app.get_activity_manager()
-activity_manager.register_command("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-activity = dsdk.Activity()
-activity.state = "Vibing"
-activity.assets.large_image = "avicii"
-activity.assets.small_image = "avicii"
-activity.assets.large_text = "avicii"
-activity.assets.small_text = "avicii"
-activity.party.id = "musik"
-activity.party.size.current_size = 1
-activity.party.size.max_size = 8
-activity.secrets.join = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
-
-def callback(result):
-    if result == dsdk.Result.ok:
-        print("Successfully set the activity!")
-    else:
-        raise Exception(result)
-
-def run(song_title):
-    activity.details = f"to {song_title}"
-    activity_manager.update_activity(activity, callback)
-    # Don't forget to call run_callbacks
-    while 1:
-        time.sleep(1/10)
-        app.run_callbacks()
+playing = False
+avicii = "avicii"
+def set_status(song_title):
+    start_time=time.time() # Using the time that we imported at the start. start_time equals time.
+    RPC.update(buttons=[{"label": "Website", "url": "https:/youtube.com/watch?v=dQw4w9WgXcQ"}, {"label": "GitHub", "url": "https://github.com/addyett/Melodine"}], state=f"to {song_title}", details="Vibing", large_image="avicii", large_text="Never Gonna Give You Up",
+            small_image="avicii", small_text="Hello!", start=start_time)
+    print("Set status")
+def update_discord():
+    print("Updated")
+    while True:
+        print("passed")
+        time.sleep(15) #Can only update presence every 15 seconds
 
