@@ -8,6 +8,7 @@ import re
 import string
 import socket
 import traceback
+from json import loads
 from ffpyplayer.player import MediaPlayer
 from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy
@@ -16,6 +17,21 @@ from pynotifier import Notification
 import tqdm
 import fuzzy_recs
 import math
+#endregion
+
+#region Client Key Assignment
+with open("client_keys.json", "r") as keys:
+    client_keys = loads(keys.read())
+    try:
+        if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
+            CLIENT_ID = client_keys["personal"]["CLIENT_ID"]
+            CLIENT_SECRET = client_keys["personal"]["CLIENT_SECRET"]
+        else:
+            CLIENT_ID = client_keys["public"]["CLIENT_ID"]
+            CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]
+    except KeyError:    # In case the personal key is undefined in the json
+        CLIENT_ID = client_keys["public"]["CLIENT_ID"]
+        CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]
 #endregion
 
 #region Global Variables
@@ -37,7 +53,7 @@ global prev_track
 prev_track = None
 
 global spot
-spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
+spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
 
 global recommendations
 recommendations = []
@@ -218,7 +234,7 @@ def get_recs(name):
 
 	global prev_search
 
-	spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
+	spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
 
 	track_results = spot.search(name, type = 'track')
 
@@ -278,7 +294,7 @@ def get_metadata(song_name):
 	try:
 		search_str = song_name
 
-		spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
+		spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
 
 		track = spot.search(search_str)
 
