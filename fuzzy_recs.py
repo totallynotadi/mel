@@ -16,8 +16,18 @@ from fuzzysearch import find_near_matches
 
 
 # Client Keys
-CLIENT_ID = "5af907e805114b54ad674b1765447cf4"
-CLIENT_SECRET = "6cc582cd14894babad8fc9043ae7a982"
+with open("client_keys.json", "r") as keys:
+    client_keys = json.loads(keys.read())
+    try:
+        if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
+            CLIENT_ID = client_keys["personal"]["CLIENT_ID"]
+            CLIENT_SECRET = client_keys["personal"]["CLIENT_SECRET"]
+        else:
+            CLIENT_ID = client_keys["public"]["CLIENT_ID"]
+            CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]
+    except KeyError:    # In case the personal key is undefined in the json
+        CLIENT_ID = client_keys["public"]["CLIENT_ID"]
+        CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]
 
 # Spotify API URIs
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"

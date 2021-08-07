@@ -60,9 +60,9 @@ def ffplay(song):
 def queue_check():
 	global music_dir
 	global queue_dir
-	music_dir = os.path.join(spotipy_dir, 'music')
-	queue_dir = os.path.join(spotipy_dir, 'queue')
-	playlist_dir = os.path.join(spotipy_dir, 'playlists')
+	music_dir = os.path.join(melodine_dir, 'music')
+	queue_dir = os.path.join(melodine_dir, 'queue')
+	playlist_dir = os.path.join(melodine_dir, 'playlists')
 	while True:
 		for song in now_playing:
 			if song == 'placeholder':
