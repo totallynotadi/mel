@@ -2,3 +2,7 @@ ffpyplayer
 youtube_dl
 spotipy
 py-notifier
+fuzzysearch
+pafy
+tqdm
+pypresence
