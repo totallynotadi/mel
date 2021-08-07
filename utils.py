@@ -228,8 +228,13 @@ def handle_autoplay():
 			now_playing.append(recommendations[0])
 			# status_dir [recommendations [0]] = 'downloaded'
 			recommendations.remove(recommendations[0])
+			print("autoplay added")
 		time.sleep(1.75)
 
+def add_req():
+	now_playing.append(recommendations[0])
+	recommendations.remove(recommendations[0])
+	print("autoplay added")
 def get_recs(name):
 
 	global prev_search
@@ -264,6 +269,7 @@ def get_recs(name):
 	else:
 		for _ in range(3):
 			recommendations.append(fuzzy_recs.main())
+	print(recommendations[0])
 
 #endregion
 #region Metadata Functions
