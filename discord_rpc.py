@@ -15,5 +15,6 @@ def set_status(song_title):
 def update_discord():
     print("Updated")
     while True:
+        print("passed")
         time.sleep(15) #Can only update presence every 15 seconds
 
