@@ -75,18 +75,19 @@ def queue_check():
 				#print("\r--- song already downloaded, playing now. \n>>>", end = ' ')
 	
 			print(f'\r--- playing {song} \n>>> ', end = '')
-				
+			print(song)
+			get_recs(song)
 			ffplay(song)
 
 			print(f'\r--- done playing {song}\n>>> ', end = '')
-
+			
 			#thread = threading.Thread(target = watch_thread, args = (song, ), daemon = True)
 			#thread.start()
 
 			time.sleep(0.5)
 
 			now_playing.clear()
-				
+			add_req()
 			#del status_dir [song]
 
 		time.sleep(1)
@@ -397,6 +398,7 @@ while True:
 
 	elif '.toggle-autoplay' in command:
 		toggle_autoplay()
+		print(autoplay)
 
 	# if '.playlist' in command:
 	#	play
