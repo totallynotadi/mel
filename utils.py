@@ -68,8 +68,8 @@ now_playing.append('placeholder')
 global status_dir
 status_dir = {}
 
-global spotipy_dir
-spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
+global melodine_dir
+melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
 queue_dir = os.path.join(os.path.expanduser('~'), 'queue')
 music_dir = os.path.join(os.path.expanduser('~'), 'music')
 #endregion
@@ -135,9 +135,9 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 		if save_as == None:
 			save_as = search_term
 
-		spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
+		melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
 
-		music_dir = os.path.join(spotipy_dir, out_dir)
+		music_dir = os.path.join(melodine_dir, out_dir)
 		formatted_search_term = filter_search_term.replace(' ', '+')
 
 		html = urllib.request.urlopen(
@@ -273,7 +273,7 @@ def put_notification(song):
 	if image_urls is not None:
 		print('\r---image_urls is not None \n>>> ', end = ' ')
 		get_image(image_urls['mid'], track)
-		image_path = os.path.join(spotipy_dir, 'cover_art_dir', f'{track}.png')
+		image_path = os.path.join(melodine_dir, 'cover_art_dir', f'{track}.png')
 	else:
 		image_path = None
 
@@ -287,7 +287,7 @@ def put_notification(song):
 
 def get_image(image_url, song):
 	image_data = requests.get(image_url)
-	with open(os.path.join(spotipy_dir, 'cover_art_dir', f'{song}.png'), 'wb') as le_image:
+	with open(os.path.join(melodine_dir, 'cover_art_dir', f'{song}.png'), 'wb') as le_image:
 		le_image.write(image_data.content)
 
 def get_metadata(song_name):

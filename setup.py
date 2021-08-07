@@ -1,8 +1,16 @@
-pip install -r requirements.txt
-spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
-if not os.path.exists(spotipy_dir):
-	os.mkdir(spotipy_dir)
-	os.mkdir(os.path.join(spotipy_dir, 'music'))
-	os.mkdir(os.path.join(spotipy_dir, 'queue'))
-	os.mkdir(os.path.join(spotipy_dir, 'cover_art_dir'))
-	os.mkdir(os.path.join(spotipy_dir, 'playlists'))
+import os
+
+print("== Melodine Setup ==")
+print("\nInstalling required dependencies...\n")
+
+os.system("pip install -r requirements.txt")
+
+print("\n...done\n")
+
+melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
+if not os.path.exists(melodine_dir):
+	os.mkdir(melodine_dir)
+	os.mkdir(os.path.join(melodine_dir, 'music'))
+	os.mkdir(os.path.join(melodine_dir, 'queue'))
+	os.mkdir(os.path.join(melodine_dir, 'cover_art_dir'))
+	os.mkdir(os.path.join(melodine_dir, 'playlists'))
