@@ -282,6 +282,7 @@ def put_notification(song):
 		image_path = os.path.join(melodine_dir, 'cover_art_dir', f'{track}.png')
 	else:
 		image_path = None
+		print("Image url is none")
 
 	Notification(
     title = track,
