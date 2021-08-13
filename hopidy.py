@@ -19,7 +19,10 @@ Melodine is a simple command line tool to play and download music.
     	.nowp - Displays currently playing song.
     	.quit - Exits the program gracefully."""
 ) 
-discord_rpc.set_status("nothing peeposad")
+try:
+	discord_rpc.set_status("nothing peeposad")
+except:	
+	pass
 def ffplay(song):
 
 	global player
@@ -30,13 +33,18 @@ def ffplay(song):
 
 	html = requests.get("https://www.youtube.com/results?search_query=" + formatted_search_term)
 	video_ids = re.findall(r"watch\?v=(\S{11})", str(html.content))
+	vid_url = f"https://www.youtube.com/watch?v={video_ids[0]}"
 	video = pafy.new(video_ids[0])
 	best = video.getbestaudio()
 	url = best.url
 	opts = {'sync' : 'audio'}
 	player = MediaPlayer(url, ffopts = opts)
 	utils.put_notification(song)
-	discord_rpc.set_status(video.title)
+	try:
+		discord_rpc.set_status(video.title, vid_url)
+		
+	except:	
+		pass
 	#threading._start_new_thread(discord_rpc.update_discord(), ())
 	player.toggle_pause()
 	time.sleep(1)
@@ -59,7 +67,10 @@ def ffplay(song):
 			player.toggle_pause()
 			time.sleep(1)
 			player.close_player()
-			discord_rpc.set_status("nothing peeposad")
+
+			try:
+				discord_rpc.set_status("nothing peeposad")
+			except:	pass
 			break
 		time.sleep(1)
 		last_pts = updated_pts
