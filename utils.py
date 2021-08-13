@@ -36,7 +36,6 @@ with open("client_keys.json", "r") as keys:
 
 #region Global Variables
 global selected
-
 global search_dict
 search_dict = {}
 search_dict ['playing_playlist'] = []
@@ -123,7 +122,6 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 	alpha_list.remove('\\')
 	alpha_list.remove('"')
 	alpha_list.append(' ')
-
 	filter_search_term = ''.join(
 	    [char for char in search_term if char in alpha_list])
 
@@ -149,6 +147,8 @@ def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
 
 		song = pafy.new(le_url)
 		best = song.getbestaudio()
+		global extension
+		extension = best.extension
 		best.download(filepath=f"{music_dir}/{formatted_search_term}{best.extension}")
 
 		status_dir[search_term] = 'downloaded'
@@ -225,14 +225,11 @@ def manage_recommendations():
 def handle_autoplay():
 	while True:
 		if len(now_playing) == 0 and len(queue) == 0 and prev_track != None and autoplay and len(recommendations) != 0:
-			now_playing.append(recommendations[0])
-			# status_dir [recommendations [0]] = 'downloaded'
-			recommendations.remove(recommendations[0])
-			print("autoplay added")
+			add_req()
 		time.sleep(1.75)
 
 def add_req():
-	now_playing.append(recommendations[0])
+	queue.append(recommendations[0])
 	recommendations.remove(recommendations[0])
 	print("autoplay added")
 def get_recs(name):
@@ -291,6 +288,9 @@ def put_notification(song):
     duration = 5,									 			# Duration in seconds
     urgency = 'normal'
 	).send()
+	f = open("History.txt", "a")
+	f.write(f"{track} - {artists}\n")
+	f.close()
 
 def get_image(image_url, song):
 	image_data = requests.get(image_url)
