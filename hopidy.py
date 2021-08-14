@@ -1,144 +1,101 @@
+import os
+import time
+import threading
+import urllib.request
 import requests
 import re
-import pafy
-from ffpyplayer.player import MediaPlayer
-import time
-import os
-import utils 
-import threading
-import discord_rpc
-print("""
-Welcome to Melodine. 
-Melodine is a simple command line tool to play and download music.
-		
-    	.play <Song Name> - Plays the top result for the search term.
-    	.dload <Song Name> - Downloads the top result for the search term.
-    	.addq <Song Name> - Adds song to the end of the queue
-    	.showq - Displays queue
-    	.playnext - <Song Name> - Plays the top search result after the currently playing song.
-    	.nowp - Displays currently playing song.
-    	.quit - Exits the program gracefully."""
-) 
+import string
+import socket
+import traceback
+import random_song
 
 try:
-	discord_rpc.set_status("nothing peeposad")
-except:	
+	import ffpyplayer
+except:
+	os.system('pip install -r requirements.txt')
+from ffpyplayer.player import MediaPlayer
+
+from youtube_dl import YoutubeDL
+
+from spotipy.oauth2 import SpotifyClientCredentials
+import spotipy
+
+#from pynotifier import Notification
+from plyer import notification
+
+# config stuff
+#
+# kill timer
+# group listening related stuff
+# user creds
+#
+
+# TO-DO
+#
+# handle exceptions well
+# help command
+# streaming opts
+# direct play
+# autoplay
+# fix ico in notifs
+# listen with frands
+# play/search by genre/artist
+
+global autoplay
+autoplay = True
+
+global vol
+vol = 100
+
+global opts
+
+global prev_track
+prev_track = None
+
+# global spot
+# spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
+
+global recommendations
+recommendations = []
+recommendations.append('placeholder')
+
+global queue
+global now_playing
+queue = []
+now_playing = []
+
+global status_dir
+status_dir = {}
+
+global spotipy_dir
+spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
+if not os.path.exists(spotipy_dir):
+	os.mkdir(spotipy_dir)
+	os.mkdir(os.path.join(spotipy_dir, 'music'))
+	os.mkdir(os.path.join(spotipy_dir, 'queue'))
+	os.mkdir(os.path.join(spotipy_dir, 'cover_art_dir'))
+	os.mkdir(os.path.join(spotipy_dir, 'playlists'))
+
+
+def socket_handler():
+	SEPARATOR = '<SEPARATOR>'
+
+	global BUFFER_SIZE
+	BUFFER_SIZE = 512
+
+	host = '18.116.67.97'
+	# host = '192.168.43.164'
+	port = 105001
+
+	global client_socket
+	client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	client_socket.connect((host, port))
+	print("[+]connected")
+
 	pass
-def ffplay(song):
 
-	global player
-	global vol
 
-	search_term = song
-	formatted_search_term = search_term.replace(' ', '+')
-
-	html = requests.get("https://www.youtube.com/results?search_query=" + formatted_search_term)
-	video_ids = re.findall(r"watch\?v=(\S{11})", str(html.content))
-	vid_url = f"https://www.youtube.com/watch?v={video_ids[0]}"
-	video = pafy.new(video_ids[0])
-	best = video.getbestaudio()
-	url = best.url
-	opts = {'sync' : 'audio'}
-	player = MediaPlayer(url, ffopts = opts)
-	utils.put_notification(song)
-	try:
-		discord_rpc.set_status(video.title, vid_url)
-		
-	except:	
-		pass
-	#threading._start_new_thread(discord_rpc.update_discord(), ())
-	player.toggle_pause()
-	time.sleep(1)
-	player.toggle_pause()
-	last_pts = 0
-	updated_pts = 0
-	while True:
-		updated_pts = int(float(str(player.get_pts())[: 3])) - 3
-
-		while player.get_pause():
-			time.sleep(0.4)
-
-		if updated_pts == last_pts:
-			player.toggle_pause()
-			time.sleep(4)	
-			player.toggle_pause()
-
-		if int(float(str(player.get_pts())[: 3])) - 3 == int(float(str(player.get_metadata()['duration'])[: 3])) - 3:
-			player.set_mute(True)
-			player.toggle_pause()
-			time.sleep(1)
-			player.close_player()
-
-			try:
-				discord_rpc.set_status("nothing peeposad")
-			except:	pass
-			break
-		time.sleep(1)
-		last_pts = updated_pts
-def queue_check():
-	global music_dir
-	global queue_dir
-	music_dir = os.path.join(utils.melodine_dir, 'music')
-	queue_dir = os.path.join(utils.melodine_dir, 'queue')
-	#playlist_dir = os.path.join(utils.melodine_dir, 'playlists')
-	while True:
-		for song in utils.now_playing:
-			if song == 'placeholder':
-				continue
-				#time.sleep(3.7)
-			#song_with_ext = song + '.wav'
-			#if os.path.exists(os.path.join(music_dir, song_with_ext)) == False and os.path.exists(os.path.join(queue_dir, song_with_ext)) == False:
-				#print("\r--- song dowloading since it isn't already downloaded. \n>>>", end = ' ')
-				#get_music(song, None, 'queue')
-				#print("\r--- song already downloaded, playing now. \n>>>", end = ' ')
-	
-			print(f'\r--- playing {song} \n>>> ', end = '')
-			print(song)
-			utils.get_recs(song)
-			utils.add_req()
-			ffplay(song)
-
-			print(f'\r--- done playing {song}\n>>> ', end = '')
-			
-			#thread = threading.Thread(target = watch_thread, args = (song, ), daemon = True)
-			#thread.start()
-
-			time.sleep(0.5)
-
-			utils.now_playing.clear()
-			#del status_dir [song]
-
-		time.sleep(1)
-def check_empty_queue():
-
-	while True:
-		#print("passed")
-		if len(utils.now_playing) == 0:
-			if len(utils.queue) != 0:
-				print('continuing from the utils.queue')
-				print('\r--- shifting songs \n>>> ', end = ' ')
-				if utils.search_dict ['search_type'] in ['track', None]:	utils.search_dict ['playing_from'] = ['track', utils.queue [0]]
-				utils.now_playing.append(utils.queue[0])
-				utils.queue.remove(utils.queue[0])
-			elif len(utils.search_dict ['playing_playlist']) != 0:
-				print('continuing from the playlist')
-				#if utils.search_dict ['search_type'] == 'track':
-				#	utils.now_playing.append(utils.search_dict ['search_content'] [0])
-					#utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], utils.search_dict ['search_content'] [0], [utils.search_dict ['playing_from'] [-1] [utils.search_dict ['playing_from'].index(utils.queue [0]) + 1 : ]]]
-				#	utils.search_dict ['search_content'].remove(utils.search_dict ['search_content'] [0])
-				if utils.search_dict ['search_type'] in ['albums', 'artists', 'playlists']:
-					#print(utils.search_dict ['playing_playlist'])
-					utils.now_playing.append(utils.search_dict ['playing_playlist'] [0])
-					#print(utils.search_dict ['playing_playlist'])
-					utils.search_dict ['playing_playlist'].remove(utils.search_dict ['playing_playlist'] [0])
-					print(f"playing from {utils.search_dict ['search_type']}: {utils.search_dict ['playing_from'] [1]}")
-				print(utils.search_dict ['playing_from'])
-		time.sleep(1)
-def skip():
-	player.set_mute(True)
-	player.toggle_pause()
-	player.seek(player.get_metadata()['duration'] - 3)
-	player.toggle_pause()
 def manage_stream():
 	while True:
 		command = input('\r>>> ')
@@ -146,122 +103,392 @@ def manage_stream():
 			skip()
 			break
 
-		elif '.nowp' in command:
-			[print(f'\r--- {song} \n>>> ', end = ' ') for song in utils.now_playing]
+
+def clear_recs():
+	for song in recommendations:
+		thread = threading.Thread(target = watch_thread, args = (song, ))
+		thread.start()
+
+def skip():
+	player.set_mute(True)
+	player.toggle_pause()
+	player.seek(player.get_metadata()['duration'] - 2)
+	player.toggle_pause()
+	time.sleep(2.2)
+	player.set_mute(False)
+
+def watch_thread(song):
+	song_path = os.path.join(queue_dir, song + '.wav')
+	while True:
+		if status_dir [song] == 'downloaded':
+			time.sleep(1)
+			os.remove(song_path)
+			print(f'\rdeleted {song_path} \n>>> ', end = ' ')
+			if song in list(status_dir.keys()):
+				del status_dir[song]
+			break
+	time.sleep(5)
+
+
+def manage_recommendations():
+	global prev_change_flag
+	prev_change_flag = False
+
+	while True:
+		if (len(recommendations) == 0 or prev_change_flag == True) and autoplay:
+			print('\r--- updating recommendations \n>>> ', end=' ')
+			time.sleep(0.8)
+			if prev_change_flag == True:
+				clear_recs()
+			recommendations.clear()
+			prev_change_flag = False
+			get_recs(prev_track)
+		time.sleep(1.75)
+
+
+def handle_autoplay():
+	while True:
+		if len(now_playing) == 0 and len(queue) == 0 and prev_track != None and autoplay:
+			now_playing.append(recommendations[0])
+			# status_dir [recommendations [0]] = 'downloaded'
+			recommendations.remove(recommendations[0])
+		time.sleep(1.75)
+
+
+def get_recs(name):
+	spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('6b8eb89b95414a56a1c97dad45d9c587', '6747fd4c5e294ec685e850cf0e6dcc6e'))
+	track_results = spot.search(name)
+
+	items = track_results['tracks']['items']
+	# print(spot.audio_features(track_results ['tracks'] ['items'] [0] ['id']))
+
+	if len(items) > 0:
+		track = items[0]
+		for _ in range(4):
+			results = spot.recommendations(seed_tracks=[track['id']], seed_artists=[dict['id'] for dict in track['artists']][: 4], seed_genres=seed_genres[: 4], limit=1)
+			#results = spot.recommendations(seed_tracks = [track['id']], seed_artists=[track_results['tracks']['items'][0]['artists'][0]['id']], limit = 1)
+			for track in results['tracks']:
+				track_name = f"{track['artists'][0]['name']} - {track['name']}"
+				recommendations.append(track_name)
+	else:
+		for _ in range(3):
+			recommendations.append(random_song.main())
+
+	if len(recommendations) != 0:
+		sleep_v = 10
+		for song in recommendations:
+			print(f'\r--- {song} \n>>> ', end=' ')
+			threading._start_new_thread(get_music, (song, None, 'queue', sleep_v, ))
+			sleep_v += 6
+
+
+def put_notification(song):
+
+	image_urls, album_name, artists, track = get_metadata(song)
+	# formatted_track = track.replace(' ', '_')d
+	if image_urls is not None:
+		print('\r---image_urls is not None \n>>> ', end=' ')
+		get_image(image_urls['mid'], track)
+		image_path = os.path.join(spotipy_dir, 'cover_art_dir', f'{track}.png')
+	else:
+		image_path = None
+
+	# convert_img_to_ico(os.path.join(spotipy_dir, 'queue', 'cover_art_dir', f'{formatted_track}.{extension}'))
+
+
+	notification.notify(
+		title = track,
+		message = f"\nBy {artists}\nfrom Album {album_name}", 
+		app_icon = r'C:\users\gadit\downloads\music_icon0.ico',
+		timeout = 15
+	)
+
+	
+	#Notification(
+    #title = track,
+    #description = f'{artists}\nfrom album {album_name}',		# On Windows .ico is required, on Linux - .png
+	#icon_path = r'C:\users\gadit\downloads\Music_29918.ico',
+    #duration = 5,									 			# Duration in seconds
+    #urgency = 'normal'
+	#).send()
+
+
+def get_image(image_url, song):
+	image_data = requests.get(image_url)
+	with open(os.path.join(spotipy_dir, 'cover_art_dir', song + '.png'), 'wb') as le_image:
+		le_image.write(image_data.content)
+		le_image.close()
+
+
+def get_metadata(song_name):
+	try:
+		search_str = song_name
+
+		spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials('5af907e805114b54ad674b1765447cf4', '6cc582cd14894babad8fc9043ae7a982'))
+
+		track = spot.search(search_str)
+
+		quality = ['high', 'mid', 'low']
+		counter = 0
+		images = {}
+
+		for image_dict in track['tracks']['items'][0]['album']['images']:
+
+			images[quality[counter]] = image_dict['url']
+			counter += 1
+
+		album_name = track['tracks']['items'][0]['album']['name']
+
+		artists = []
+		artists_list = track['tracks']['items'][0]['artists']
+		for dictionary in artists_list:
+			artists.append(dictionary['name'])
+		artists = ' & '.join(artists)
+
+		track_name = track['tracks']['items'][0]['name']
+
+		if os.name == 'nt':
+			images = None
+
+		return images, album_name, artists, track_name
+	except Exception:
+		return None, None, song_name.split(' ')[0], song_name
+
+
+def check_empty_queue():
+	while True:
+		if len(now_playing) == 0 and len(queue) != 0:
+			print('\r--- shifting songs \n>>> ', end=' ')
+			now_playing.append(queue[0])
+			queue.remove(queue[0])
+		time.sleep(1)
+
+
+def ffplay(path):
+
+	global player
+
+	opts = {'sync' : 'audio', 'volume': vol/100}
+	player = MediaPlayer(path)
+	time.sleep(0.7)
+	player.set_volume(vol)
+
+	time.sleep(5)
+	while True:
+		if str(player.get_pts())[: 3] == str(player.get_metadata()['duration'])[: 3]:
+			break
+		time.sleep(0.2)
+	player.toggle_pause()
+	player.close_player()
+
+
+def update_queue():
+	for song in queue:
+		if os.path.exists(os.path.join(queue_dir, song + '.wav')) == False and os.path.exists(os.path.join(music_dir, song + '.wav')) == False and os.path.exists(os.path.join(queue_dir, song + '.wav.part')) == False:
+			threading._start_new_thread(get_music, (song, None, 'queue', ))
+		if os.path.exists(os.path.join(music_dir, song + 'wav')):
+			print('\r--- song already downloaded, so not doing it again \n>>> ', end=' ')
+			status_dir[song] = 'downloaded'
+
+
+def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
+	alpha_list = list(string.printable)[: -6]
+	alpha_list.remove('/')
+	alpha_list.remove('\\')
+	alpha_list.remove('"')
+	alpha_list.append(' ')
+
+	filter_search_term = ''.join(
+	    [char for char in search_term if char in alpha_list])
+
+	try:
+		status_dir[search_term] = 'downloading'
+
+		time.sleep(sleep_val)
+
+		if save_as == None:
+			save_as = search_term
+
+		spotipy_dir = os.path.join(os.path.expanduser('~'), 'SpotiPy')
+
+		music_dir = os.path.join(spotipy_dir, out_dir)
+		download_path = os.path.join(music_dir, search_term)
+		formatted_search_term = filter_search_term.replace(' ', '+')
+
+		html = urllib.request.urlopen(
+		    "https://www.youtube.com/results?search_query=" + formatted_search_term)
+		video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
+
+		yt_url_thingy = 'https://www.youtube.com/watch?v='
+		le_url = yt_url_thingy + video_ids[0]
+
+		audio_downloder = YoutubeDL({'extractaudio': True,
+									'audioformat': 'wav',
+									'audioquality': 320,
+									'format': 'bestaudio',
+									'outtmpl': f'{download_path}.wav',
+									'nopart': part,
+									'quiet': True})
+
+		audio_downloder.extract_info(le_url)
+
+		status_dir[search_term] = 'downloaded'
+	except Exception as e:
+		status_dir[search_term] = 'downloaded'
+		print('errorr in downloading')
+		#traceback.print_exc()
+		print(e)
+		pass
+
+
+def queue_check():
+	global music_dir
+	global queue_dir
+	music_dir = os.path.join(spotipy_dir, 'music')
+	queue_dir = os.path.join(spotipy_dir, 'queue')
+	playlist_dir = os.path.join(spotipy_dir, 'playlists')
+
+	while True:
+		for song in now_playing:
+			# print(status_dir)
+			while status_dir[song] == 'downloading':
+				time.sleep(3.35)
+			song_with_ext = song + '.wav'
+			if os.path.exists(os.path.join(music_dir, song_with_ext)) == False and os.path.exists(os.path.join(queue_dir, song_with_ext)) == False:
+				print(f'\r--- {song} is not downloaded, downloading it now \n>>> ', end='')
+				get_music(song, None, 'queue')
+
+				print(f'\r--- playing {song} \n>>> ', end='')
+
+				put_notification(song)
+
+				ffplay(os.path.join(queue_dir, song + '.wav'))
+
+				print(f'\r--- done playing {song}\n>>> ', end='')
+
+				thread = threading.Thread(target=watch_thread, args=(song, ), daemon=True)
+				thread.start()
+				# os.remove(os.path.join(queue_dir, song_with_ext))
+
+				time.sleep(0.5)
+
+				now_playing.clear()
+
+			elif os.path.exists(os.path.join(music_dir, song_with_ext)):
+				print(f'\r--- this song is already downloaded in the music dir, so playing it now \n>>> ', end=' ')
+
+				print('\r--- playing audio \n>>> ', end='')
+
+				put_notification(song)
+
+				ffplay(os.path.join(music_dir, song + '.wav'))
+
+				print(f'\r--- done playing {song}\n>>> ', end='')
+				time.sleep(0.5)
+
+				now_playing.clear()
+				time.sleep(0.5)
+
+			else:
+
+				print('\r--- this song is already downloaded in the queue dir, so playing it now \n>>> ', end = ' ')
+
+				print('\r--- playing audio \n>>> ', end = ' ')
+
+				put_notification(song)
+
+				ffplay(os.path.join(queue_dir, song + '.wav'))
+				print(f'\r--- done playing {song}\n>>> ', end = '')
+
+				thread = threading.Thread(target = watch_thread, args = (song, ))
+				thread.start()
+				# os.remove(os.path.join(queue_dir, song_with_ext))
+
+				now_playing.clear()
+				time.sleep(0.5)
+			if song in list(status_dir.keys()):
+				del status_dir[song]
+
+		time.sleep(1)
+
+
 threading._start_new_thread(queue_check, ())
 threading._start_new_thread(check_empty_queue, ())
-	
-
-if utils.autoplay:
-	threading._start_new_thread(utils.manage_recommendations, ())
-	threading._start_new_thread(utils.handle_autoplay, ())
+if autoplay:
+	threading._start_new_thread(manage_recommendations, ())
+	threading._start_new_thread(handle_autoplay, ())
 
 while True:
 
 	command = str(input('\r>>> '))
 
 	if '.addq' in command:
-		command = command[6:]
-
-		song, no_auto = utils.parse_opts(command)
-
-
-		utils.queue.append(song)
+		song = command[6:]
+		song = ''.join([char for char in song if char not in ['\\', '/', '"', '|']])
+		queue.append(song)
 		print('\r--- updating queue \n>>> ', end = ' ')
-		utils.status_dir[song] = 'downloaded'	
-		if not no_auto and utils.autoplay == True:
-				prev_track = song
-				prev_change_flag = True
+		status_dir[song] = 'downloaded'
+		threading._start_new_thread(update_queue, ())
+		prev_track = song
+		prev_change_flag = True
 
 	elif '.playnext' in command:
-		command = command[10:]
-
-		song, no_auto = utils.parse_opts(command)
-
-		utils.queue.insert(0, song)
+		song = command[10:]
+		song = ''.join([char for char in song if char not in ['\\', '/', '"', '|']])
+		queue.insert(0, song)
 		print('\r--- updating queue \n>>> ', end = ' ')
-		utils.status_dir[song] = 'downloaded'
-		if not no_auto and utils.autoplay == True:
-				prev_track = song
-				prev_change_flag = True
-	elif '.next' in command:
-		utils.now_playing.clear()
-		player.close_player()
-	elif '.list' in command:
-		index = int(command.split(' ', 1) [1])
-		content_dict = utils.search_dict ['search_content']
-
-		selected = list(content_dict.keys()) [index]
-		key_id = content_dict [selected]
-
-		utils.search_dict ['loaded_playlist'].clear()
-
-		table_rows = []
-		if utils.search_dict ['search_type'] == 'playlists':
-			le_playlist = utils.spot.playlist_items(key_id) ['items']
-			for index, song in enumerate(le_playlist):
-				song_name = f"{song ['track'] ['name']} - {song ['track'] ['artists'] [0] ['name']}"
-				utils.search_dict ['loaded_playlist'].append(song_name)
-				table_rows.append([f"{index}", f"{song ['track'] ['name']}", f"{' & '.join([artist ['name'] for artist in song ['track'] ['artists']])}"])	
+		threading._start_new_thread(update_queue, ())
+		status_dir[song] = 'downloaded'
+		prev_track = song
+		prev_change_flag = True
 
 	elif '.play' in command:
-		command = command [6 : ]
+		song = command[6:]
+		song = ''.join([char for char in song if char not in ['\\', '/', '"', '|']])
 
-		song, no_auto = utils.parse_opts(command)
-
-		try:	utils.now_playing.remove('placeholder')
-		except:	pass
-
-		if (len(utils.now_playing) == 0 and len(song) != 0) or (len(utils.now_playing) != 0 and len(song) != 0):
-			if len(utils.now_playing) != 0:
-				utils.queue.insert(0, song)
-				if song not in list(utils.status_dir.keys()):
-					utils.status_dir[song] = 'downloaded'
+		if (len(now_playing) == 0 and len(song) != 0) or (len(now_playing) != 0 and len(song) != 0):
+			if len(now_playing) != 0:
+				# for song in recommendations:
+				#	thread = threading.Thread(target = watch_thread, args = (song + '.wav', ), daemon = True)
+				#	thread.start()
+				queue.insert(0, song)
+				if song not in list(status_dir.keys()):
+					status_dir[song] = 'downloaded'
 				skip()
-			else:	utils.now_playing.append(song)
-
-			if song not in list(utils.status_dir.keys()):
-				utils.status_dir[song] = 'downloaded'
-			try:	utils.recommendations.remove('placeholder')
-			except Exception:	pass
-
-			if (not no_auto) and utils.autoplay == True:
-				prev_track = song
-				prev_change_flag = True
-
-			print(utils.search_dict ['playing_from'])
-			if utils.search_dict ['search_type'] in ['playlists', 'albums', 'artists']:
-				utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], selected, utils.search_dict ['playing_playlist'] [utils.search_dict ['loaded_playlist'].index(song) + 1 : ]]
-				utils.search_dict ['playing_playlist'] = utils.search_dict ['playing_playlist'] [utils.search_dict ['loaded_playlist'].index(song) + 1 : ]
 			else:
-				if utils.search_dict ['search_type'] == None:	utils.search_dict ['playing_from'] = ['track', song]
-				else:	utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], song]
+				now_playing.append(song)
 
+			if song not in list(status_dir.keys()):
+				status_dir[song] = 'downloaded'
+			try:
+				recommendations.remove('placeholder')
+			except Exception:
+				pass
+			prev_track = song
+			prev_change_flag = True
 		elif len(song) == 0:
-			try:	player.toggle_pause()
-			except Exception:	pass
+			try:
+				player.toggle_pause()
+			except Exception:
+				pass
 
 	elif '.dload' in command:
 		song = command[7:]
 		print('\r--- (enter the name for the audio file to be saved as) \n---', end = " ")
 		save_as = str(input())
 
-		threading._start_new_thread(utils.get_music, (song, save_as, 'music', ))
+		threading._start_new_thread(get_music, (song, save_as, 'music', ))
 
 	elif '.showq' in command:
-		for song in utils.queue:
+		for song in queue:
 			print(f'--- {song}')
 
 	elif '.nowp' in command:
-		try:	print(utils.search_dict ['playing_from'])
-		except:	pass
-		print(f'\r--- {utils.now_playing [0]} \n>>> ', end = ' ')
+		print('   ', now_playing)
+		print(f'\r--- {now_playing [0]} \n>>> ', end = ' ')
 
 	elif '.pause' in command:
-		try:
-			player.toggle_pause()
-		except:
-			pass
+		player.toggle_pause()
 
 	elif '.skip' in command:
 		skip_time = command[6:]
@@ -289,24 +516,22 @@ while True:
 
 	elif '.remove' in command:
 		index = int(command.split(' ', 1)[1])
-		utils.clear_recs()
-		threading._start_new_thread(utils.watch_thread, (utils.queue[index], ))
-		if index - 1 < 0:	prev_track = utils.now_playing [0]
-		else:	prev_track = utils.queue [index - 1]
+		clear_recs()
+		threading._start_new_thread(watch_thread, (queue[index], ))
+		del status_dir[queue[index]]
+		if index - 1 < 0:
+			prev_track = now_playing [0]
+		else:
+			prev_track = queue [index - 1]
 		prev_change_flag = True
-		del utils.queue[index]
+		del queue[index]
 
 	elif '.stream' in command:
-		try:	skip()
-		except:	pass
-		utils.toggle_autoplay()
-		utils.clear_recs()
-
 		title = command.split(' ', 1) [1]
 
-		print(f'--- streaming "{title}"')
+		print(title)
 
-		threading._start_new_thread(utils.get_music, (title, None, 'queue', 0, False))
+		threading._start_new_thread(get_music, (title, None, 'queue', 0, False))
 
 		time.sleep(5)
 
@@ -314,127 +539,27 @@ while True:
 			if os.path.exists(os.path.join(queue_dir, title + '.wav.part')) == True:
 				threading._start_new_thread(manage_stream, ())
 				ffplay(os.path.join(queue_dir, title + '.wav.part'))
-				utils.queue.append('queueholder')
-				print(utils.queue)
-				del utils.status_dir [title]
-				utils.queue.remove('queueholder')
+				del status_dir [title]
 				break
 
-		utils.toggle_autoplay()
-
-	elif '.rewind' in command:
-		player.seek(-2)
-		time.sleep(1)
-
-	elif '.like' in command:
-		like = open("Liked.txt", "a")
-		like.write(utils.now_playing[0] + "\n")
-
-	elif '.listl' in command:
-		print(open("ListL.txt", "a").read())
-
-	elif '.search' in command:
-		opts = ['--track', '--playlist', '--album', '--artist']
-		command = command.split(' ', 2)
-		opt = command [1]
-		term = command [2]
-		if opt not in opts:
-			print("the viable opts are '--track', '--playlist', '--artist' and '--album'")
-			continue
-
-		if opt == opts [0]:	key = 'tracks'
-		elif opt == opts [1]:	key = 'playlists'
-		elif opt == opts [2]:	key = 'albums'
-		elif opt == opts [3]:	key = 'artists'
-
-		utils.search_dict ['search_type'] = key
-		if key == 'tracks':	utils.search_dict ['search_content'] = []
-		else:	utils.search_dict ['search_content'] = {}
-		utils.search_dict ['loaded_playlist'] = []
-
-		search_results = utils.spot.search(term, type = opt [2 : ], limit = 25)
-
-		items = search_results [key] ['items']
-
-		table_rows = []
-		for index, opts in enumerate(items):
-			if opt [2 : ] == 'track':
-				
-				utils.search_dict ['search_content'].append(f"{opts ['name']} - {opts ['artists'] [0] ['name']}")
-				table_rows.append([index, f"{opts ['name']}", f"{opts ['artists'] [0] ['name']}"])	
-
-			elif opt [2 : ] == 'playlist':
-				print(f"\r--- {opts ['name']} by {opts ['owner'] ['display_name']} \n>>> ", end = ' ')
-				utils.search_dict ['search_content'] [opts ['name']] = opts ['id']
-
-			elif opt [2 : ] == 'album':
-				print(f"\r--- {opts ['name']} by {' & '.join([dict ['name'] for dict in opts ['artists']])} \n>>> ", end = ' ')
-				utils.search_dict ['search_content'] [opts ['name']] = f"{opts ['id']}"
-
-			elif opt [2 : ] == 'artist':
-				print(f"\r--- {opts ['name']} - {opts ['genres']} \n>>> ", end = ' ')
-				utils.search_dict ['search_content'] [opts ['name']] = f"{opts ['id']}"
-
-		if utils.search_dict ['search_type'] == 'tracks':
-			print(utils.make_table(
-				rows = table_rows,
-				labels = ['index', 'tracks', 'artists'],
-				centered = True
-			))
-
-		elif utils.search_dict ['search_type'] == 'albums':
-			for index, album_song in enumerate(utils.spot.album_tracks(key_id) ['items']):
-				song_name = f"{album_song ['name']} - {album_song ['artists'] [0] ['name']}"
-				utils.search_dict ['loaded_playlist'].append(song_name)
-				table_rows.append([f"{index}", f"{album_song ['name']}", f"{' & '.join([dict ['name'] for dict in album_song ['artists']])}"])	
-
-		elif utils.search_dict ['search_type'] == 'artists':
-			songs_list = []
-			#print(spot.artist_albums(key_id) ['items'])
-			artist_album = utils.spot.artist_albums(key_id) ['items']
-			for album in artist_album:
-				album_id = album ['id']
-				for index, album_song in enumerate(utils.spot.album_tracks(album_id) ['items']):
-					song_name = f"{album_song ['name']} - {album_song ['artists'] [0] ['name']}"
-					if song_name not in songs_list:
-						utils.search_dict ['loaded_playlist'].append(song_name)
-						table_rows.append([f"{index}", f"{album_song ['name']}", f"{' & '.join([dict ['name'] for dict in album_song ['artists']])}"])
-						songs_list.append(song_name)
-
-		print(utils.make_table(
-			rows = list(table_rows),
-			labels = ['index', 'tracks', 'artist'],
-			centered = True
-		))
-
-		utils.search_dict ['playing_playlist'] = utils.search_dict ['loaded_playlist']
-
 	elif '.showrecs' in command:
-		for rec in utils.recommendations:
+		for rec in recommendations:
 			print(f'--- {rec}')
 		print(f'--- for previous track : {prev_track}')
 
-	elif '.srch' in command:
-		print(utils.search_dict)
-
 	elif '.stat' in command:
-		print(f'\r--- {utils.status_dir} \n>>> ', end = ' ')
+		print(f'\r--- {status_dir} \n>>> ', end = ' ')
 
-	elif '.close' in command:
-		player.close_player()
+	elif '.toggle_autoplay' in command:
+		if autoplay == True:	autoplay = False
+		elif autoplay == False:	autoplay = True
+		clear_recs()
 
-	elif '.toggle-autoplay' in command:
-		utils.toggle_autoplay()
-		print(utils.autoplay)
-
-	elif '.history' in command:
-		print(open("History.txt", "r").read())
 	# if '.playlist' in command:
 	#	play
 
 	elif '.quit' in command:
 		try:
-			f.close()
 			skip()
 			time.sleep(0.5)
 			player.close_player()
@@ -442,6 +567,6 @@ while True:
 			pass
 
 		for song in os.listdir(queue_dir):
-			#watch_thread(song)
 			os.remove(os.path.join(queue_dir, song))
 		break
+		exit()
