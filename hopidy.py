@@ -568,5 +568,6 @@ while True:
 
 		for song in os.listdir(queue_dir):
 			os.remove(os.path.join(queue_dir, song))
-		break
+      
 		exit()
+		#break
