@@ -106,7 +106,6 @@ def queue_check():
 			time.sleep(0.5)
 
 			utils.now_playing.clear()
-			utils.add_req()
 			#del status_dir [song]
 
 		time.sleep(1)
@@ -326,6 +325,13 @@ while True:
 	elif '.rewind' in command:
 		player.seek(-2)
 		time.sleep(1)
+
+	elif '.like' in command:
+		like = open("Liked.txt", "a")
+		like.write(utils.now_playing[0] + "\n")
+
+	elif '.listl' in command:
+		print(open("ListL.txt", "a").read())
 
 	elif '.search' in command:
 		opts = ['--track', '--playlist', '--album', '--artist']
