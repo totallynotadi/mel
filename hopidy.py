@@ -7,6 +7,8 @@ import os
 import utils 
 import threading
 import discord_rpc
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 print("""
 Welcome to Melodine. 
 Melodine is a simple command line tool to play and download music.
@@ -19,20 +21,30 @@ Melodine is a simple command line tool to play and download music.
     	.nowp - Displays currently playing song.
     	.quit - Exits the program gracefully."""
 ) 
-
+spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(utils.CLIENT_ID, utils.CLIENT_SECRET))
 try:
 	discord_rpc.set_status("nothing peeposad")
 except:	
 	pass
-def ffplay(song):
-
+def define(track):
+	global song
 	global player
 	global vol
-
-	search_term = song
-	formatted_search_term = search_term.replace(' ', '+')
-
-	html = requests.get("https://www.youtube.com/results?search_query=" + formatted_search_term)
+	image_urls, album_name, artists, track_name, track_uri = utils.get_metadata(track)
+	print(track_uri)
+	song = track_uri
+def ffplay(track):
+	global song
+	global player
+	global vol
+	image_urls, album_name, artists, track_name, track_uri = utils.get_metadata(track)
+	print(track_uri)
+	song = track_uri
+	print(song)
+	search_term = f"{track_name} {artists}"
+	search_term = search_term.replace(" ", "+")
+	print(f"song:::{song}")
+	html = requests.get("https://www.youtube.com/results?search_query=" + search_term)
 	video_ids = re.findall(r"watch\?v=(\S{11})", str(html.content))
 	vid_url = f"https://www.youtube.com/watch?v={video_ids[0]}"
 	video = pafy.new(video_ids[0])
@@ -40,7 +52,7 @@ def ffplay(song):
 	url = best.url
 	opts = {'sync' : 'audio'}
 	player = MediaPlayer(url, ffopts = opts)
-	utils.put_notification(song)
+	utils.put_notification(image_urls, album_name, artists, track_name)
 	try:
 		discord_rpc.set_status(video.title, vid_url)
 		
@@ -63,7 +75,8 @@ def ffplay(song):
 			time.sleep(4)	
 			player.toggle_pause()
 
-		if int(float(str(player.get_pts())[: 3])) - 3 == int(float(str(player.get_metadata()['duration'])[: 3])) - 3:
+		if int(float(str(player.get_pts())[: 3])) - 2 == int(float(str(player.get_metadata()['duration'])[: 3])) - 2:
+			print(int(float(str(player.get_metadata()['duration'])[: 3])))
 			player.set_mute(True)
 			player.toggle_pause()
 			time.sleep(1)
@@ -82,8 +95,8 @@ def queue_check():
 	queue_dir = os.path.join(utils.melodine_dir, 'queue')
 	#playlist_dir = os.path.join(utils.melodine_dir, 'playlists')
 	while True:
-		for song in utils.now_playing:
-			if song == 'placeholder':
+		for songs in utils.now_playing:
+			if songs == 'placeholder':
 				continue
 				#time.sleep(3.7)
 			#song_with_ext = song + '.wav'
@@ -91,12 +104,12 @@ def queue_check():
 				#print("\r--- song dowloading since it isn't already downloaded. \n>>>", end = ' ')
 				#get_music(song, None, 'queue')
 				#print("\r--- song already downloaded, playing now. \n>>>", end = ' ')
-	
-			print(f'\r--- playing {song} \n>>> ', end = '')
-			print(song)
+			define(songs)
+			print(f'\r--- playing {songs} \n>>> ', end = '')
 			utils.get_recs(song)
 			utils.add_req()
-			ffplay(song)
+
+			ffplay(songs)
 
 			print(f'\r--- done playing {song}\n>>> ', end = '')
 			
@@ -207,37 +220,37 @@ while True:
 	elif '.play' in command:
 		command = command [6 : ]
 
-		song, no_auto = utils.parse_opts(command)
+		song_name, no_auto = utils.parse_opts(command)
 
 		try:	utils.now_playing.remove('placeholder')
 		except:	pass
 
-		if (len(utils.now_playing) == 0 and len(song) != 0) or (len(utils.now_playing) != 0 and len(song) != 0):
+		if (len(utils.now_playing) == 0 and len(song_name) != 0) or (len(utils.now_playing) != 0 and len(song_name) != 0):
 			if len(utils.now_playing) != 0:
-				utils.queue.insert(0, song)
-				if song not in list(utils.status_dir.keys()):
-					utils.status_dir[song] = 'downloaded'
+				utils.queue.insert(0, song_name)
+				if song_name not in list(utils.status_dir.keys()):
+					utils.status_dir[song_name] = 'downloaded'
 				skip()
-			else:	utils.now_playing.append(song)
+			else:	utils.now_playing.append(song_name)
 
-			if song not in list(utils.status_dir.keys()):
-				utils.status_dir[song] = 'downloaded'
+			if song_name not in list(utils.status_dir.keys()):
+				utils.status_dir[song_name] = 'downloaded'
 			try:	utils.recommendations.remove('placeholder')
 			except Exception:	pass
 
 			if (not no_auto) and utils.autoplay == True:
-				prev_track = song
+				prev_track = song_name
 				prev_change_flag = True
 
 			print(utils.search_dict ['playing_from'])
 			if utils.search_dict ['search_type'] in ['playlists', 'albums', 'artists']:
-				utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], selected, utils.search_dict ['playing_playlist'] [utils.search_dict ['loaded_playlist'].index(song) + 1 : ]]
-				utils.search_dict ['playing_playlist'] = utils.search_dict ['playing_playlist'] [utils.search_dict ['loaded_playlist'].index(song) + 1 : ]
+				utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], selected, utils.search_dict ['playing_playlist'] [utils.search_dict ['loaded_playlist'].index(song_name) + 1 : ]]
+				utils.search_dict ['playing_playlist'] = utils.search_dict ['playing_playlist'] [utils.search_dict ['loaded_playlist'].index(song_name) + 1 : ]
 			else:
-				if utils.search_dict ['search_type'] == None:	utils.search_dict ['playing_from'] = ['track', song]
-				else:	utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], song]
+				if utils.search_dict ['search_type'] == None:	utils.search_dict ['playing_from'] = ['track', song_name]
+				else:	utils.search_dict ['playing_from'] = [utils.search_dict ['search_type'], song_name]
 
-		elif len(song) == 0:
+		elif len(song_name) == 0:
 			try:	player.toggle_pause()
 			except Exception:	pass
 

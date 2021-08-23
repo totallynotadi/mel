@@ -67,6 +67,8 @@ now_playing.append('placeholder')
 global status_dir
 status_dir = {}
 
+spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
+
 global melodine_dir
 melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
 queue_dir = os.path.join(os.path.expanduser('~'), 'queue')
@@ -238,9 +240,9 @@ def get_recs(name):
 
 	spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
 
-	track_results = spot.search(name, type = 'track')
-
-	items = track_results['tracks']['items']
+	track_results = spot.track(name)
+	print(track_results)
+	items = track_results
 
 	def get_genre_from_artist(artists):
 		genres = []
@@ -252,12 +254,11 @@ def get_recs(name):
 
 	if len(items) > 0:
 		prev_search = name
-		track = items[0]
-		artists = [dict ['name'] for dict in track ['artists']]
+		artists = [dict ['name'] for dict in items ['artists']]
 		seed_genres = get_genre_from_artist(artists)
 		for _ in range(4):
 			#track_results['tracks']['items'][0]['artists'][0]['id']
-			results = spot.recommendations(seed_tracks = [track['id']], seed_artists = [dict ['id'] for dict in track ['artists']] [ : 1], seed_genres = seed_genres [ : 1], limit = 1)
+			results = spot.recommendations(seed_tracks = [items['id']], seed_artists = [dict ['id'] for dict in items ['artists']] [ : 1], seed_genres = seed_genres [ : 1], limit = 1)
 			for track in results['tracks']:
 				track_name = f"{track['name']} - {track['artists'][0]['name']}"
 				recommendations.append(track_name)
@@ -270,8 +271,7 @@ def get_recs(name):
 
 #endregion
 #region Metadata Functions
-def put_notification(song):
-	image_urls, album_name, artists, track = get_metadata(song)
+def put_notification(image_urls, album_name, artists, track):
 	# formatted_track = track.replace(' ', '_')
 	if image_urls is not None:
 		print('\r---image_urls is not None \n>>> ', end = ' ')
@@ -323,11 +323,11 @@ def get_metadata(song_name):
 		artists = ' & '.join(artists)
 
 		track_name = track['tracks']['items'][0]['name']
-
+		track_uri = track['tracks']['items'][0]['uri']
 		if os.name == 'nt':
 			images = None
 
-		return images, album_name, artists, track_name
+		return images, album_name, artists, track_name, track_uri
 	except Exception:
 		return None, None, song_name.split(' ')[0], song_name
 #endregion
