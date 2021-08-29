@@ -8,8 +8,8 @@ import os
 import re
 
 #local imports
+sys.path.insert(1, r'../Melodine/src/random_tracks')
 import get_random_track
-import classes
 
 # third party module imports
 # automatically download mising modules

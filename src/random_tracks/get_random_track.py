@@ -16,7 +16,7 @@ from fuzzysearch import find_near_matches
 
 
 # Client Keys
-with open("client_keys.json", "r") as keys:
+with open(r"src/random_tracks/client_keys.json", "r") as keys:
     client_keys = json.loads(keys.read())
     try:
         if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
@@ -94,7 +94,7 @@ def main():
     
     # Open genres file
     try:
-        with open('genres.json', 'r') as infile:
+        with open(r'src/random_tracks/genres.json', 'r') as infile:
             valid_genres = json.load(infile)
     except FileNotFoundError:
         print("Couldn't find genres file!")
