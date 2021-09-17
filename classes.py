@@ -280,9 +280,9 @@ class Playlist:
     def __init__(self, name):
         self.name = name
         self.tracks = []
-    def add_song(track):
+    def add_song(self, track):
         self.tracks.append(track)
-    def remove_song(index = None):
+    def remove_song(self, index = None):
         if index is not None:
             self.tracks.pop(index)
 
