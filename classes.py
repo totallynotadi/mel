@@ -276,7 +276,15 @@ class Album:
     def list(self):
         pass
 
-
+class Playlist:
+    def __init__(self, name):
+        self.name = name
+        self.tracks = []
+    def add_song(track):
+        self.tracks.append(track)
+    def remove_song(index = None):
+        if index is not None:
+            self.tracks.pop(index)
 
 
 
