@@ -276,22 +276,9 @@ class Album:
     def list(self):
         pass
 
-class Playlist:
-    def __init__(self, id = None, name = None):
-        if id is not None:
-            playlist = spotify.playlist(id)
-        elif name is not None:
-            playlist_search = spotify.search(name, type = 'playlist', limit = 1)
-            playlist = playlist_search ['playlists'] ['items'] [0]
-        else:   raise NoAttributesSupplied
-        if len(playlist) > 0:
-            self.playlist_id = playlist ['id']
-            self.name = playlist ['name']
-            print(spotify.playlist_tracks(playlist ['id']))
-            self.tracks = [Track(track ['id']) for track in spotify.playlist_tracks(playlist ['id']) ['items']]
 
 
-playlist = Playlist(id = "5g05pZUUUHjXK7My6Omyzy")
+
 
 if __name__ == 'main':
     start = time.time()
