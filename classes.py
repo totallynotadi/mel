@@ -1,3 +1,4 @@
+#region Imports
 import threading
 import requests
 import spotipy
@@ -9,8 +10,11 @@ from ffpyplayer.player import MediaPlayer
 from youtube_dl import YoutubeDL
 from plyer import notification
 from pyyoutube import Api
+from json import loads
 import pafy
+#endregion
 
+#region Exceptions
 # yt-dl errors
 # youtube_dl.utils.ExtractorError
 # youtube_dl.utils.DownloadError
@@ -30,9 +34,9 @@ class NoAttributesSupplied(ObjectNotConstructable):
     ObjectNotConstructable.__str__("no search term or ID supplied")
 class ObjectNotSearchable(ObjectNotConstructable):
     ObjectNotConstructable.__str__("empty response from the spotify API")
+#endregion
 
 
-spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials('6b8eb89b95414a56a1c97dad45d9c587', '6747fd4c5e294ec685e850cf0e6dcc6e'))
 
 
 def filter_search_term(search_term: str):
@@ -48,6 +52,25 @@ def filter_search_term(search_term: str):
                         erase_from -= 1
     return (' ').join(search_term[: erase_from])
 
+
+class SpotifyCredentials:
+    def __init__(self):
+        with open("client_keys.json", "r") as keys:
+            client_keys = loads(keys.read())
+            try:
+                if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
+                    self.client_id = client_keys["personal"]["CLIENT_ID"]
+                    self.client_secret = client_keys["personal"]["CLIENT_SECRET"]
+                    self.key_type = "personal"
+                else:
+                    self.client_id = client_keys["public"]["CLIENT_ID"]
+                    self.client_secret = client_keys["public"]["CLIENT_SECRET"]
+                    self.key_type = "public"
+            except:
+                print("No keys provided")
+
+spotify_credentials = SpotifyCredentials()
+spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(spotify_credentials.client_id, spotify_credentials.client_secret))
 
 class Track:
     def __init__(self, name = None, track_id = None):
@@ -211,6 +234,7 @@ class Track:
         print(':::finished playing')
 
 
+
 class Artist:
     # stuff needed from an artists class
     #
@@ -280,13 +304,25 @@ class Playlist:
     def __init__(self, name):
         self.name = name
         self.tracks = []
+
     def add_song(self, track):
         self.tracks.append(track)
+
     def remove_song(self, index = None):
         if index is not None:
             self.tracks.pop(index)
 
-
+    def list_songs(self):
+        for song in self.tracks:
+            print(song.title)
+    
+    def export_to_spotify(self):
+        if spotify_credentials.key_type == "personal":
+            for song in self.tracks:
+                #TODO: export playlist to spotify
+                pass
+        else:
+            print("Sorry, you haven't provided client credentials, please obtain them from https://developer.spotify.com")
 
 if __name__ == 'main':
     start = time.time()
