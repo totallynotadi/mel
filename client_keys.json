@@ -1,7 +1,8 @@
 {
     "public": {
         "CLIENT_ID": "6b8eb89b95414a56a1c97dad45d9c587",
-        "CLIENT_SECRET": "6747fd4c5e294ec685e850cf0e6dcc6e"
+        "CLIENT_SECRET": "6747fd4c5e294ec685e850cf0e6dcc6e",
+        "REDIRECT_URI": "https://localhost:8080"
     },
     "personal": {}
 }

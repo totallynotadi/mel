@@ -3,9 +3,11 @@ import threading
 import requests
 import spotipy
 import time
+import json
 import re
+import os
 
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyOAuth
 from ffpyplayer.player import MediaPlayer
 from youtube_dl import YoutubeDL
 from plyer import notification
@@ -61,17 +63,20 @@ class SpotifyCredentials:
                 if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
                     self.client_id = client_keys["personal"]["CLIENT_ID"]
                     self.client_secret = client_keys["personal"]["CLIENT_SECRET"]
+                    self.redirect_uri = client_keys["personal"]["REDIRECT_URI"]
                     self.key_type = "personal"
                 else:
                     self.client_id = client_keys["public"]["CLIENT_ID"]
                     self.client_secret = client_keys["public"]["CLIENT_SECRET"]
+                    self.redirect_uri = client_keys["public"]["REDIRECT_URI"]
                     self.key_type = "public"
             except:
                 print("No keys provided")
 
 spotify_credentials = SpotifyCredentials()
-spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(spotify_credentials.client_id, spotify_credentials.client_secret))
-
+scope = 'playlist-read-private playlist-modify-private use-read-recently-played'
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=spotify_credentials.client_id, client_secret=spotify_credentials.client_secret, redirect_uri=spotify_credentials.redirect_uri))
+melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
 class Track:
     def __init__(self, name = None, track_id = None):
         # preferred extension is set to .wav, but it might change based on the extension of the higest quality stream')
@@ -118,9 +123,9 @@ class Track:
         #self.__fetch_url()
 
         if self.__type == 'track_id':
-            track = spotify.track(self.track_id)
+            track = sp.track(self.track_id)
         if self.__type == 'name':
-            track_search = spotify.search(self.title, type = 'track', limit = 1)
+            track_search = sp.search(self.title, type = 'track', limit = 1)
             if len(track_search ['tracks'] ['items']) <= 0:
                 print(':::track not available from spotify, doing a minimal fetch')
                 if '-' in self.title:    self.artists = [self.title.split('-')[0].strip()]
@@ -253,21 +258,21 @@ class Artist:
             if not attribute is None:    type = [key for key, value in locals().items() if value == attribute] [0]
         if type == None:    raise NoAttributesSupplied
         if type == 'name':
-            artist_search = spotify.search(self.name, type = 'artist', limit = 1)
+            artist_search = sp.search(self.name, type = 'artist', limit = 1)
             artist = artist_search['artists']['items'][0]
-        elif type == 'artist_id':    artist = spotify.artist(artist_id)
+        elif type == 'artist_id':    artist = sp.artist(artist_id)
         if len(artist) > 0:
             self.artist_id = artist ['id']
             self.name = artist ['name']
             self.genres = artist ['genres']
-            self.top_tracks = [Track(track ['id']) for track in spotify.artist_top_tracks(artist_id) ['tracks']]
+            self.top_tracks = [Track(track ['id']) for track in sp.artist_top_tracks(artist_id) ['tracks']]
         else:    raise ObjectNotSearchable
 
     # a list of album objects containing the albums from the searched artist
     # make it's own method to get albums from an artiist and call tha method for whenever we need the albums 
     # since contructing all the albums for an artist is an expensive computation (shit ton of api requests)
     def fetch_albums(self, artist):
-        self.albums = [Album(album ['id']) for album in spotify.artist_albums(self.artist_id) ['items']]
+        self.albums = [Album(album ['id']) for album in sp.artist_albums(self.artist_id) ['items']]
 
 
 class Album:
@@ -285,14 +290,14 @@ class Album:
             if not attribute is None:    type = [key for key, value in locals().items() if value == attribute] [0]
         if type == None:    raise NoAttributesSupplied
         if type == 'name':
-            album_search = spotify.search(name, type = 'album', limit = 1)
+            album_search = sp.search(name, type = 'album', limit = 1)
             album = album_search ['albums'] ['items'] [0]
-        elif type == 'album_id':    album = spotify.album(album_id)
+        elif type == 'album_id':    album = sp.album(album_id)
         if len(album) > 0:
             self.album_id = album ['id']
             self.name = album ['name']
             self.artists = [Artist(artist_id = artist ['id']) for artist in album ['artists']]
-            self.tracks = [Track(track ['id']) for track in spotify.album_tracks(album ['id']) ['items']]
+            self.tracks = [Track(track ['id']) for track in sp.album_tracks(album ['id']) ['items']]
             self.album_type = album ['type']
         else:    raise ObjectNotSearchable
 
@@ -304,26 +309,45 @@ class Playlist:
     def __init__(self, name):
         self.name = name
         self.tracks = []
+        os.mkdir(os.path.join(os.path.join(melodine_dir, 'playlists', name)))
+        self.dir = os.path.join(os.path.join(melodine_dir, 'playlists', name))
+        self.data = {
+            "name": self.name,
+            "tracks": self.tracks,
+            "spotify": None
+        }
 
+        with open(os.path.join(self.dir ,'data.json'), 'w') as json_file:
+            json.dump(self.data, json_file)
     def add_song(self, track):
         self.tracks.append(track)
+        if self.data["spotify"] != None:
+            sp.playlist_add_items(sp.current_user()["id"], self.data["spotify"], track)
 
-    def remove_song(self, index = None):
-        if index is not None:
-            self.tracks.pop(index)
+    def remove_song(self, track):
+        if track is not None:
+            self.tracks.pop(track)
+        if self.data["spotify"] != None:
+            sp.playlist_remove_all_occurrences_of_items(sp.current_user()["id"], self.data["spotify"], track)
 
     def list_songs(self):
         for song in self.tracks:
             print(song.title)
     
     def export_to_spotify(self):
-        if spotify_credentials.key_type == "personal":
-            for song in self.tracks:
-                #TODO: export playlist to spotify
-                pass
-        else:
-            print("Sorry, you haven't provided client credentials, please obtain them from https://developer.spotify.com")
-
+        sp.user_playlist_create(sp.current_user()["id"], self.name)
+        for playlist in sp.current_user_playlists():
+            if self.name == playlist["name"]:
+                self.data["spotify"] = playlist["id"]
+                with open(os.path.join(self.dir ,'data.json'), 'w') as json_file:
+                    json.dump(self.data, json_file)
+                break
+        for song in self.tracks:
+            sp.user_playlist_add_tracks(sp.current_user()["id"], self.data["spotify"], song.track_id)
+            
+                        
+                
+        
 if __name__ == 'main':
     start = time.time()
 
