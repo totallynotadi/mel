@@ -58,20 +58,14 @@ def filter_search_term(search_term: str):
 class SpotifyCredentials:
     def __init__(self):
         with open("client_keys.json", "r") as keys:
-            client_keys = loads(keys.read())
+            client_keys = json.loads(keys.read())
             try:
-                if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
-                    self.client_id = client_keys["personal"]["CLIENT_ID"]
-                    self.client_secret = client_keys["personal"]["CLIENT_SECRET"]
-                    self.redirect_uri = client_keys["personal"]["REDIRECT_URI"]
-                    self.key_type = "personal"
-                else:
-                    self.client_id = client_keys["public"]["CLIENT_ID"]
-                    self.client_secret = client_keys["public"]["CLIENT_SECRET"]
-                    self.redirect_uri = client_keys["public"]["REDIRECT_URI"]
-                    self.key_type = "public"
-            except:
-                print("No keys provided")
+                self.client_id = client_keys["public"]["CLIENT_ID"]
+                self.client_secret = client_keys["public"]["CLIENT_SECRET"]
+                self.redirect_uri = client_keys["public"]["REDIRECT_URI"]
+                self.key_type = "public"
+            except Exception as e:
+                print(e)
 
 spotify_credentials = SpotifyCredentials()
 scope = 'playlist-read-private playlist-modify-private use-read-recently-played'
