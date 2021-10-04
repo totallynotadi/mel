@@ -39,7 +39,10 @@ class ObjectNotSearchable(ObjectNotConstructable):
 #endregion
 
 
-
+class User:
+    def __init__(self, spotify):
+        self.user_id = spotify.current_user()["id"]
+        self.username = spotify.current_user()["name"]
 
 def filter_search_term(search_term: str):
     # filter the strings like "Official Music Video" out of the title
@@ -67,10 +70,6 @@ class SpotifyCredentials:
             except Exception as e:
                 print(e)
 
-spotify_credentials = SpotifyCredentials()
-scope = 'playlist-read-private playlist-modify-private use-read-recently-played'
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=spotify_credentials.client_id, client_secret=spotify_credentials.client_secret, redirect_uri=spotify_credentials.redirect_uri))
-melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
 class Track:
     def __init__(self, name = None, track_id = None):
         # preferred extension is set to .wav, but it might change based on the extension of the higest quality stream')
@@ -300,7 +299,7 @@ class Album:
         pass
 
 class Playlist:
-    def __init__(self, name):
+    def __init__(self, name, user):
         self.name = name
         self.tracks = []
         os.mkdir(os.path.join(os.path.join(melodine_dir, 'playlists', name)))
@@ -316,20 +315,20 @@ class Playlist:
     def add_song(self, track):
         self.tracks.append(track)
         if self.data["spotify"] != None:
-            sp.playlist_add_items(sp.current_user()["id"], self.data["spotify"], track)
+            sp.playlist_add_items(user.user_id, self.data["spotify"], track)
 
     def remove_song(self, track):
         if track is not None:
             self.tracks.pop(track)
         if self.data["spotify"] != None:
-            sp.playlist_remove_all_occurrences_of_items(sp.current_user()["id"], self.data["spotify"], track)
+            sp.playlist_remove_all_occurrences_of_items(user.user_id, self.data["spotify"], track)
 
     def list_songs(self):
         for song in self.tracks:
             print(song.title)
     
     def export_to_spotify(self):
-        sp.user_playlist_create(sp.current_user()["id"], self.name)
+        sp.user_playlist_create(user.user_id, self.name)
         for playlist in sp.current_user_playlists():
             if self.name == playlist["name"]:
                 self.data["spotify"] = playlist["id"]
@@ -337,20 +336,12 @@ class Playlist:
                     json.dump(self.data, json_file)
                 break
         for song in self.tracks:
-            sp.user_playlist_add_tracks(sp.current_user()["id"], self.data["spotify"], song.track_id)
-            
-                        
-                
+            sp.user_playlist_add_tracks(user.user_id, self.data["spotify"], song.track_id)        
         
 if __name__ == 'main':
-    start = time.time()
-
-    track = Track('憂鬱 - Sun')
-    track.fetch_metadata()
-    print(track.artists)
-
-    end = time.time()
-    print(end-start)
-
-    print(':::playing track')
-    track.play()
+    spotify_credentials = SpotifyCredentials()
+    scope = 'playlist-read-private playlist-modify-private use-read-recently-played'
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=spotify_credentials.client_id, client_secret=spotify_credentials.client_secret, redirect_uri=spotify_credentials.redirect_uri))
+    melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
+    user = User(sp)
+    print(user.user_id)
