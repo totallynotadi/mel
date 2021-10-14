@@ -1,15 +1,22 @@
+#region Imports
 import threading
 import requests
+import spotipy
 import time
+import json
 import re
+import os
 
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyOAuth
 from ffpyplayer.player import MediaPlayer
 from youtube_dl import YoutubeDL
 from plyer import notification
 from pyyoutube import Api
-import spotipy
+from json import loads
+import pafy
+#endregion
 
+#region Exceptions
 # yt-dl errors
 # youtube_dl.utils.ExtractorError
 # youtube_dl.utils.DownloadError
@@ -20,162 +27,141 @@ import spotipy
 # base error class
 # no attributes supplied
 # not searchable on spotify
-
-
 class ObjectNotConstructable(Exception):
     # base exception class
-    def __str__(self, string=None):
-        if not string is None:
-            return string
-        else:
-            return 'object not constructable'
-
-
+    def __str__(self, string = None):
+        if not string is None:    return string
+        else:    return 'object not constructable'
 class NoAttributesSupplied(ObjectNotConstructable):
     ObjectNotConstructable.__str__("no search term or ID supplied")
-
-
 class ObjectNotSearchable(ObjectNotConstructable):
     ObjectNotConstructable.__str__("empty response from the spotify API")
+#endregion
 
 
-spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
-    '6b8eb89b95414a56a1c97dad45d9c587', '6747fd4c5e294ec685e850cf0e6dcc6e'))
-
-global yt_dloader
-yt_dloader = YoutubeDL({
-    # 'buffersize': 512,
-    # 'http_chunk_size': 256,
-    'audioformat': 'wav',
-    'format': 'bestaudio',
-    # 'outtmpl': self.title + self.ext,
-    'extractaudio': True,
-    'retries': 5,
-    'continuedl': True,
-    'nopart': True,
-    'hls_prefer_native': True,
-    'quiet': True
-})
-
+class User:
+    def __init__(self, spotify):
+        self.user_id = spotify.current_user()["id"]
+        self.username = spotify.current_user()["name"]
 
 def filter_search_term(search_term: str):
     # filter the strings like "Official Music Video" out of the title
     erase_from = None
     for word in search_term.lower().split(' '):
-        for trigger in ['official', 'music', 'audio', 'wave', 'video', 'lyrics ']:
+        for trigger in ['official', 'music', 'audio', 'wave', 'video']:
             if trigger in word:
                 trigger_index = search_term.index(word)
                 erase_from = trigger_index
-                for bracket in ['(', '[', '|']:
+                for bracket in ['(', '[']:
                     if bracket in search_term[trigger_index - 1]:
                         erase_from -= 1
     return (' ').join(search_term[: erase_from])
 
 
+class SpotifyCredentials:
+    def __init__(self):
+        with open("client_keys.json", "r") as keys:
+            client_keys = json.loads(keys.read())
+            try:
+                self.client_id = client_keys["public"]["CLIENT_ID"]
+                self.client_secret = client_keys["public"]["CLIENT_SECRET"]
+                self.redirect_uri = client_keys["public"]["REDIRECT_URI"]
+                self.key_type = "public"
+            except Exception as e:
+                print(e)
+
 class Track:
-    # stuff needed from the track classe
-    #
-    # attributes
-    # track title
-    # track artists
-    # track url
-    # track album
-    # track genre (any 5)
-    #
-    # methods
-    # send_notif
-    # get_recs
-    # download
-    # play
-    def __init__(self, name=None, track_id=None):
+    def __init__(self, name = None, track_id = None):
         # preferred extension is set to .wav, but it might change based on the extension of the higest quality stream')
 
         # this block of code determines the attribute to be used to construct the object
         # i.e. wether to construct based on a search term of directly from an ID
-        self._type = None
+        self.__type = None
         for attribute in [name, track_id]:
-            if not attribute is None:
-                self._type = [key for key, value in locals().items() if value == attribute][0]
-        if self._type == None:
-            raise NoAttributesSupplied
+            if not attribute is None:    self.__type  = [key for key, value in locals().items() if value == attribute] [0]
+        if self.__type == None:    raise NoAttributesSupplied
 
-        self.title = name
         self.track_id = track_id
+        self.title = name
+        self.ext = '.wav'
+        self.filename = self.title + self.ext
+        self.fetch_type = None
 
-        self.artists = None
-        self.album = None
-        self.genres = None
+    def __fetch_url(self):
+        print(':::fetching url')
+        # pafy stuff
+        # the below lines of code take a long time to execute (about 3 to 4 seconds of runtime)
+        # thus their handling is important
+        # this is executed lazily i.e. only when needed
+        html = requests.get("https://www.youtube.com/results?search_query=" + self.title.replace(' ', '+'))
+        video = pafy.new(re.findall(r"watch\?v=(\S{11})", str(html.content))[0])
+        best_stream = video.getbestaudio(preftype = "wav", ftypestrict = False)
 
-        html = requests.get(
-            "https://www.youtube.com/results?search_query=" + self.title.replace(' ', '+'))
-        self.video_info = yt_dloader.extract_info(
-            'https://www.youtube.com/watch?v=' + re.findall(r"watch\?v=(\S{11})", str(html.content))[0])
-        self.title = filter_search_term(self.video_info['title']).strip()
-        self.url = self.video_info['url']
+        self.ext = '.' + best_stream.extension
+        self.title = filter_search_term(video.title).strip()
+        self.url = best_stream.url
+        self.filename = self.title + self.ext
+        print('video title:::', filter_search_term(video.title))
 
-        self._track = ''
-        if self._type == 'track_id':
-            self._track = spotify.track(self.track_id)
-        elif self._type == 'name':
-            track_search = spotify.search(self.title, type='track', limit=1)
-            try:
-                self._track = track_search['tracks']['items'][0]
-            except IndexError:
-                self._track = ''
+    def fetch_metadata(self):
+        # dont repeat if all the data's been already fetched
+        if not self.fetch_type is None:    return
 
-        if self._track != '':
-            self.track_id = self._track['id']
+        # doing the url fetch in a thread and sleeping for a while 
+        # since the execution of this function takes about 3 to 4 seconds
+        # guess that's how you be lazy
+        print(':::started the url fetch')
+        threading._start_new_thread(self.__fetch_url, ())
+        time.sleep(2)
+        #self.__fetch_url()
 
-            print(':::fetched')
+        if self.__type == 'track_id':
+            track = sp.track(self.track_id)
+        if self.__type == 'name':
+            track_search = sp.search(self.title, type = 'track', limit = 1)
+            if len(track_search ['tracks'] ['items']) <= 0:
+                print(':::track not available from spotify, doing a minimal fetch')
+                if '-' in self.title:    self.artists = [self.title.split('-')[0].strip()]
+                else:    self.artists = None
+                self.__artists_names = None
+                self.album = None
+                self.track_id = None
+                self.genres = None
+                self.fetch_type = 'minimal'
+                return
+            else:    track = track_search ['tracks'] ['items'] [0]
 
-    def get_artists(self):
-        if self.artists == None:
-            if self._track != '':
-                self.artists = []
-                self.__artists_names = []
-                for artist in self._track['artists']:
-                    self.artists.append(Artist(artist_id=artist['id']))
-                    self.__artists_names.append(artist['name'])
-            else:
-                if 'artist' in self.video_info:
-                    self.artists = [Artist(name=artist)
-                                    for artist in self.video_info['artist']]
-                    self.__artists_names = [artist for artist in self.video_info['artist']]
-                else:
-                    if ' - ' in self.title:
-                        self.__artists_names = [self.title.split(' - ')[0].strip()]
-                    else:
-                        self.__artists_names = [self.video_info['channel']]
-        return self.artists
+        self.track_id = track['id']
 
-    def get_album(self):
-        if self.album == None:
-            if self._track != '':
-                self.album = [Album(self.video_info['album'])]
-            else:
-                self.album = Album(album_id=self._track['album']['id'])
-        return self.album
+        self.artists = []
+        self.__artists_names = []
+        for artist in track['artists']:
+            self.artists.append(Artist(artist_id = artist['id']))
+            self.__artists_names.append(artist['name'])
 
-    def get_genres(self):
-        if self.genres == None:
-            if self._track != '':
-                self.genres = []
-                for artist in self.artists:
-                    for genre in artist.genres:
-                        self.genres.append(genre)
-        return list(set(self.genres))
+        self.genres = []
+        for artist in self.artists:
+            for genre in artist.genres:
+                self.genres.append(genre)
+
+        self.album = Album(album_id = track ['album'] ['id'])
+            
+        self.fetch_type = 'full'
+
+        print(':::fetched')
 
     def send_notification(self):
         print(":::sending notif")
         # send notification
 
+        # fetch metadata for the track if it has'nt already been fetched
+        if self.fetch_type is None:
+            self.fetch_metadata()
         message = ''
         if not self.__artists_names is None:
             message = self.__artists_names
-            if len(message) == 1:
-                pass
-            elif len(message) == 2:
-                message.insert(1, ' and ')
+            if len(message) == 1:    pass
+            elif len(message) == 2:    message.insert(1, ' and ')
             else:
                 increment = 1
                 for i in range(len(message)):
@@ -187,23 +173,38 @@ class Track:
         if not self.album is None:
             message += f'\nfrom album {self.album.name}'
         notification.notify(
-            title=self.title,
-            message=message,
-            app_icon=r'C:\users\gadit\downloads\music_icon0.ico',
-            app_name='M E L O D I N E',
-            timeout=10,
-            toast=False
-        )
+            title = self.title,
+            message = message,
+            app_icon = r'C:\users\gadit\downloads\music_icon0.ico',
+            app_name = 'M E L O D I N E',
+            timeout = 10,
+            toast = False
+            )
 
-    def download(self):
-        yt_dloader.extract_info(self.url)
+    def download(self, custom = None, no_part = True):
+        global audio_downloader
+        audio_downloader = YoutubeDL({
+                            #'buffersize': 512,
+                            #'http_chunk_size': 256,
+                            #'audioformat': 'wav',
+                            #'format': 'bestaudio',
+                            'outtmpl': self.title + self.ext,
+                            'extractaudio': True,
+                            'retries': 5,
+                            'continuedl': True,
+                            'nopart': no_part,
+                            'hls_prefer_native': True,
+                            'quiet': True
+                            })
+        audio_downloader.extract_info(self.url)
 
     def play(self):
-        self.download()
+        self.fetch_metadata()
+        self.download(no_part = True)
         print('::: downloaded')
         threading._start_new_thread(self.send_notification, ())
 
-        self.player = MediaPlayer(self.title + self.video_info['ext'])
+        self.player = MediaPlayer(self.filename)
         time.sleep(0.5)
         print('::: playing')
 
@@ -225,10 +226,11 @@ class Track:
                 print(':::breaking')
                 self.player.toggle_pause()
                 self.player.close_player()
-
+            
             last_pts = updated_pts
             time.sleep(1)
         print(':::finished playing')
+
 
 
 class Artist:
@@ -240,37 +242,30 @@ class Artist:
     # albums - a list of all the albums from an artist
     # top tracks - a list of top tracks (a list containing track objects for the top tracks)
 
-    def __init__(self, name=None, artist_id=None):
+    def __init__(self, name = None, artist_id = None):
         print(locals())
         self.name = name
         self.artist_id = artist_id
         type = None
         for attribute in [name, artist_id]:
-            if not attribute is None:
-                type = [key for key, value in locals().items()
-                        if value == attribute][0]
-        if type == None:
-            raise NoAttributesSupplied
+            if not attribute is None:    type = [key for key, value in locals().items() if value == attribute] [0]
+        if type == None:    raise NoAttributesSupplied
         if type == 'name':
-            artist_search = spotify.search(self.name, type='artist', limit=1)
+            artist_search = sp.search(self.name, type = 'artist', limit = 1)
             artist = artist_search['artists']['items'][0]
-        elif type == 'artist_id':
-            artist = spotify.artist(artist_id)
+        elif type == 'artist_id':    artist = sp.artist(artist_id)
         if len(artist) > 0:
-            self.artist_id = artist['id']
-            self.name = artist['name']
-            self.genres = artist['genres']
-            self.top_tracks = [
-                Track(track['id']) for track in spotify.artist_top_tracks(artist_id)['tracks']]
-        else:
-            raise ObjectNotSearchable
+            self.artist_id = artist ['id']
+            self.name = artist ['name']
+            self.genres = artist ['genres']
+            self.top_tracks = [Track(track ['id']) for track in sp.artist_top_tracks(artist_id) ['tracks']]
+        else:    raise ObjectNotSearchable
 
     # a list of album objects containing the albums from the searched artist
-    # make it's own method to get albums from an artiist and call tha method for whenever we need the albums
-    # since contructing all the albums for an artist is an expensive computation (a lot of api requests)
+    # make it's own method to get albums from an artiist and call tha method for whenever we need the albums 
+    # since contructing all the albums for an artist is an expensive computation (shit ton of api requests)
     def fetch_albums(self, artist):
-        self.albums = [Album(album['id'])
-                       for album in spotify.artist_albums(self.artist_id)['items']]
+        self.albums = [Album(album ['id']) for album in sp.artist_albums(self.artist_id) ['items']]
 
 
 class Album:
@@ -282,55 +277,71 @@ class Album:
     # tracks - a list containing track objects for all the tracks in a album
     # type - the type of album (a full album, or a single or smthng)
 
-    def __init__(self, name=None, album_id=None):
+    def __init__(self, name = None, album_id = None):
         type = None
         for attribute in [name, album_id]:
-            if not attribute is None:
-                type = [key for key, value in locals().items()
-                        if value == attribute][0]
-        if type == None:
-            raise NoAttributesSupplied
+            if not attribute is None:    type = [key for key, value in locals().items() if value == attribute] [0]
+        if type == None:    raise NoAttributesSupplied
         if type == 'name':
-            album_search = spotify.search(name, type='album', limit=1)
-            album = album_search['albums']['items'][0]
-        elif type == 'album_id':
-            album = spotify.album(album_id)
+            album_search = sp.search(name, type = 'album', limit = 1)
+            album = album_search ['albums'] ['items'] [0]
+        elif type == 'album_id':    album = sp.album(album_id)
         if len(album) > 0:
-            self.album_id = album['id']
-            self.name = album['name']
-            self.artists = [Artist(artist_id=artist['id'])
-                            for artist in album['artists']]
-            self.tracks = [Track(track['id'])
-                           for track in spotify.album_tracks(album['id'])['items']]
-            self.album_type = album['type']
-        else:
-            raise ObjectNotSearchable
+            self.album_id = album ['id']
+            self.name = album ['name']
+            self.artists = [Artist(artist_id = artist ['id']) for artist in album ['artists']]
+            self.tracks = [Track(track ['id']) for track in sp.album_tracks(album ['id']) ['items']]
+            self.album_type = album ['type']
+        else:    raise ObjectNotSearchable
+
 
     def list(self):
         pass
 
-
 class Playlist:
-    def __init__(self, name):
+    def __init__(self, name, user):
         self.name = name
         self.tracks = []
+        os.mkdir(os.path.join(os.path.join(melodine_dir, 'playlists', name)))
+        self.dir = os.path.join(os.path.join(melodine_dir, 'playlists', name))
+        self.data = {
+            "name": self.name,
+            "tracks": self.tracks,
+            "spotify": None
+        }
 
+        with open(os.path.join(self.dir ,'data.json'), 'w') as json_file:
+            json.dump(self.data, json_file)
     def add_song(self, track):
         self.tracks.append(track)
+        if self.data["spotify"] != None:
+            sp.playlist_add_items(user.user_id, self.data["spotify"], track)
 
-    def remove_song(self, index=None):
-        if index is not None:
-            self.tracks.pop(index)
+    def remove_song(self, track):
+        if track is not None:
+            self.tracks.pop(track)
+        if self.data["spotify"] != None:
+            sp.playlist_remove_all_occurrences_of_items(user.user_id, self.data["spotify"], track)
 
-
-if __name__ == '__main__':
-    start = time.time()
-
-    track = Track('憂鬱 - Sun')
-    print(track.artists)
-
-    end = time.time()
-    print(end-start)
-
-    print(':::playing track')
-    track.play()
+    def list_songs(self):
+        for song in self.tracks:
+            print(song.title)
+    
+    def export_to_spotify(self):
+        sp.user_playlist_create(user.user_id, self.name)
+        for playlist in sp.current_user_playlists():
+            if self.name == playlist["name"]:
+                self.data["spotify"] = playlist["id"]
+                with open(os.path.join(self.dir ,'data.json'), 'w') as json_file:
+                    json.dump(self.data, json_file)
+                break
+        for song in self.tracks:
+            sp.user_playlist_add_tracks(user.user_id, self.data["spotify"], song.track_id)        
+        
+if __name__ == 'main':
+    spotify_credentials = SpotifyCredentials()
+    scope = 'playlist-read-private playlist-modify-private use-read-recently-played'
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=spotify_credentials.client_id, client_secret=spotify_credentials.client_secret, redirect_uri=spotify_credentials.redirect_uri))
+    melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
+    user = User(sp)
+    print(user.user_id)
