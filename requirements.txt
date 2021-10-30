@@ -6,3 +6,4 @@ fuzzysearch
 pafy
 tqdm
 pypresence
+requests

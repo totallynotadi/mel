@@ -292,11 +292,9 @@ def update_queue():
             status_dict[song] = 'downloaded'
 
 
-def get_music(search_term, out_dir, save_as = None, sleep_val = 0, no_part = True):
+def get_music(search_term, out_dir, save_as = None, sleep_int = 0, no_part = True):
     try:
-
         status_dict[search_term] = 'downloading'
-        time.sleep(sleep_val)
         if save_as == None:
             save_as = search_term
         music_dir = os.path.join(melodine_dir, out_dir)
@@ -305,17 +303,20 @@ def get_music(search_term, out_dir, save_as = None, sleep_val = 0, no_part = Tru
         video_ids = re.findall(r"watch\?v=(\S{11})", str(html.content))
         video_url = 'https://www.youtube.com/watch?v=' + video_ids[0]
 
-        audio_downloder = YoutubeDL({
-                                    'outtmpl': f'{download_path}.wav',
-                                    'hls_prefer_native': True,
+        audio_downloder = YoutubeDL({'outtmpl': f'{download_path}.wav',
+                                    'sleep_interval': sleep_int,
+                                    'hls_prefer_native': True,  
+                                    'progress_hooks': [print],
                                     'format': 'bestaudio',
                                     'extractaudio': True,
                                     'continuedl': True,
-                                    'no_part': no_part,
+                                    'nopart': no_part,
+                                    'fixup': 'never',
                                     'quiet': True,
                                     'retries': 5
                                     })
-        audio_downloder.extract_info(video_url)
+        audio_downloder.download([video_url])
+        print(audio_downloder.extract_info(video_ur))
         status_dict[search_term] = 'downloaded'
     except urllib.error.HTTPError as error:
         status_dict[search_term] = 'downloaded'
@@ -339,7 +340,6 @@ def queue_check():
             #wait while the current song is being downloaded, since downloadint while palying causes buffer errors
             while status_dict[song] == 'downloading':    time.sleep(2)
             song_with_ext = song + '.wav'
-
             # determining the directory to play from (dont download if the track is alredy saved)
             # the play_path is set to the dierecotry based on the directory in which the song is downloaded
             # by default, it is set to the queue_dir
