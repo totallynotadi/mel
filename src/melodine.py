@@ -6,7 +6,12 @@ import time
 import sys
 import os
 import re
-
+from ffpyplayer.player import MediaPlayer
+from youtube_dl import YoutubeDL
+from spotipy.oauth2 import SpotifyClientCredentials
+from plyer import notification
+import pafy
+import requests
 #local imports
 sys.path.insert(1, r'../Melodine/src/random_tracks')
 import get_random_track
@@ -38,7 +43,7 @@ import spotipy
 # user creds
 #
 
-# TO-DO
+#TODO
 #
 # handle exceptions well
 # help command
@@ -68,23 +73,7 @@ status_dict = {}
 global melodine_dir
 melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
 
-def socket_handler():
-    #SEPARATOR = '<SEPARATOR>'
 
-    global BUFFER_SIZE
-    BUFFER_SIZE = 512
-
-    host = '18.116.67.97'
-    # host = '192.168.43.164'
-    port = 105001
-
-    global client_socket
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    client_socket.connect((host, port))
-    print("[+]connected")
-
-    pass
 
 
 def toggle_autoplay():
@@ -216,7 +205,7 @@ def put_notification(song):
     notification.notify(
         title = track,
         message = f"\nBy {artists}\nfrom Album {album_name}", 
-        app_icon = r'C:\users\gadit\downloads\music_icon0.ico',
+        app_icon = os.path.join(melodine_dir, 'cover_art_dir', track + '.png'),
         timeout = 15,
         toast = False
     )
