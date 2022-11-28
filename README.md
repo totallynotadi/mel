@@ -13,6 +13,9 @@ A command-line(for now) tool to play and download music from YouTube. Made mainl
 - Search for lyrics.
 - Fixing the countless bugs.
 - Group listening.
+- TUI
+- Shuffle
+- Maybe web app???
 
 ## Usage
 Download the code and run the main.py file.
