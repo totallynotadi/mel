@@ -16,6 +16,8 @@ A command-line(for now) tool to play and download music from YouTube. Made mainl
 - TUI
 - Shuffle
 - Maybe web app???
+- Shazam API???
+- ~~at this point this is just an idea dump~~
 
 ## Usage
 Download the code and run the main.py file.
