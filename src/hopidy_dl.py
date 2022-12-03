@@ -37,7 +37,8 @@ def ffplay(song):
 	best = video.getbestaudio()
 	url = best.url
 	opts = {'sync' : 'audio'}
-	player = MediaPlayer(url, ffopts = opts)
+	utils.get_music(url, track.name, out_dir)
+	player = MediaPlayer(os.path.join(os.path.expanduser('~'), 'Music', save_as + '.mp3'), ffopts = opts)
 	utils.put_notification(song)
 	try:
 		discord_rpc.set_status(video.title, vid_url)

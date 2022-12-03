@@ -17,10 +17,13 @@ from pynotifier import Notification
 import tqdm
 import fuzzy_recs
 import math
+import melodine as melo
+import youtube_dl
 #endregion
 
 #region Client Key Assignment
-with open("client_keys.json", "r") as keys:
+'''with open("client_keys.json", "r") as keys:
+	
     client_keys = loads(keys.read())
     try:
         if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
@@ -31,7 +34,8 @@ with open("client_keys.json", "r") as keys:
             CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]
     except KeyError:    # In case the personal key is undefined in the json
         CLIENT_ID = client_keys["public"]["CLIENT_ID"]
-        CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]
+        CLIENT_SECRET = client_keys["public"]["CLIENT_SECRET"]'''
+melo.spotify.client.authorize()
 #endregion
 
 #region Global Variables
@@ -50,9 +54,6 @@ prev_search = None
 
 global prev_track
 prev_track = None
-
-global spot
-spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
 
 global recommendations
 recommendations = []
@@ -116,44 +117,29 @@ def make_table(rows, labels = None, centered = False):
     return "\n".join(frame)
 
 #region Music Functions
-def get_music(search_term, save_as, out_dir, sleep_val = 0, part = True):
-	alpha_list = list(string.printable)[: -6]
+def get_music(track, save_as, sleep_val = 0, part = True):
+	'''alpha_list = list(string.printable)[: -6]
 	alpha_list.remove('/')
 	alpha_list.remove('\\')
 	alpha_list.remove('"')
 	alpha_list.append(' ')
 	filter_search_term = ''.join(
-	    [char for char in search_term if char in alpha_list])
+		[char for char in search_term if char in alpha_list])'''
 
 	try:
-		status_dir[search_term] = 'downloading'
-
-		time.sleep(sleep_val)
-
-		if save_as == None:
-			save_as = search_term
-
-		melodine_dir = os.path.join(os.path.expanduser('~'), '.melodine')
-
-		music_dir = os.path.join(melodine_dir, out_dir)
-		formatted_search_term = filter_search_term.replace(' ', '+')
-
-		html = urllib.request.urlopen(
-		    "https://www.youtube.com/results?search_query=" + formatted_search_term)
-		video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
-
-		yt_url_thingy = 'https://www.youtube.com/watch?v='
-		le_url = yt_url_thingy + video_ids[0]
-
-		song = pafy.new(le_url)
-		best = song.getbestaudio()
-		global extension
-		extension = best.extension
-		best.download(filepath=f"{music_dir}/{formatted_search_term}{best.extension}")
-
-		status_dir[search_term] = 'downloaded'
+		ydl_opts = {
+			'format': 'bestaudio/best',
+			'postprocessors': [{
+			'key': 'FFmpegExtractAudio',
+			'preferredcodec': 'mp3',
+			'preferredquality': '192',
+			}],
+			'quiet': 'true',
+			'outtmpl': os.path.join(os.path.expanduser('~'), 'Music', save_as + '.mp3')
+		}
+		with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+			ydl.download([track.url])
 	except Exception as e:
-		status_dir[search_term] = 'downloaded'
 		print('errorr in downloading')
 		#traceback.print_exc()
 		print(e)
@@ -168,16 +154,17 @@ def parse_opts(command):
 		command = command.split('--no-auto')
 		command.remove('')
 		song = command [0].strip()
-	else:	song = command
+	else:	
+		song = command
 
 	search_dict ['playing_from'] = ['track', song]
- 
+
 	if len(search_dict) != 0:
 		try:
 			song = int(song)
 			if search_dict ['search_type'] in ['artists', 'albums', 'playlists']:
-				 if (search_dict ['playing_playlist']) == 0:	song = search_dict ['loaded_playlist'] [song]
-				 else:	song = search_dict ['playing_playlist'] [song]
+				if (search_dict ['playing_playlist']) == 0:	song = search_dict ['loaded_playlist'] [song]
+				else:	song = search_dict ['playing_playlist'] [song]
 			else:
 				song = search_dict ['search_content'] [song]
 		except:
@@ -231,65 +218,46 @@ def handle_autoplay():
 def add_req():
 	queue.append(recommendations[0])
 	recommendations.remove(recommendations[0])
-	print("autoplay added")
-def get_recs(name):
-
-	global prev_search
-
-	spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
-
-	track_results = spot.search(name, type = 'track')
-
-	items = track_results['tracks']['items']
-
-	def get_genre_from_artist(artists):
-		genres = []
-		for artist in artists:
-			search_result = spot.search(artist, type = 'artist')
-			artist = search_result ['artists'] ['items'] [0]
-			genres += artist ['genres']
-		return list(set(genres))
-
-	if len(items) > 0:
-		prev_search = name
-		track = items[0]
-		artists = [dict ['name'] for dict in track ['artists']]
-		seed_genres = get_genre_from_artist(artists)
-		for _ in range(4):
-			#track_results['tracks']['items'][0]['artists'][0]['id']
-			results = spot.recommendations(seed_tracks = [track['id']], seed_artists = [dict ['id'] for dict in track ['artists']] [ : 1], seed_genres = seed_genres [ : 1], limit = 1)
-			for track in results['tracks']:
-				track_name = f"{track['name']} - {track['artists'][0]['name']}"
-				recommendations.append(track_name)
-	elif prev_search != None:
-		get_recs(prev_search)
-	else:
-		for _ in range(3):
-			recommendations.append(fuzzy_recs.main())
-	print(recommendations[0])
+def get_recs(track):
+	for _ in range(4):
+		#track_results['tracks']['items'][0]['artists'][0]['id']
+		results = track.get_recommendations()
+		for song in results[1:]:
+			track_name = f"{song.name} - {song.artists}"
+			recommendations.append(song.name)
 
 #endregion
 #region Metadata Functions
-def put_notification(song):
-	image_urls, album_name, artists, track = get_metadata(song)
+def put_notification(track):
+	quality = ['high', 'mid', 'low']
+	counter = 0
+	images = {}
+	album_name = track.album.name
+	artists = []
+	for artist in track.artists:
+		artists.append(artist.name)
+	artists = ' & '.join(artists)
+	for image in track.images:
+			images[quality[counter]] = image.url
+			counter += 1
+	
 	# formatted_track = track.replace(' ', '_')
-	if image_urls is not None:
-		print('\r---image_urls is not None \n>>> ', end = ' ')
-		get_image(image_urls['mid'], track)
+	if images is not None:
+		get_image(images['high'], track)
 		image_path = os.path.join(melodine_dir, 'cover_art_dir', f'{track}.png')
 	else:
 		image_path = None
 		print("Image url is none")
 
 	Notification(
-    title = track,
+    title = track.name,
     description = f'{artists}\nfrom album {album_name}',		# On Windows .ico is required, on Linux - .png
 	icon_path = image_path,
     duration = 5,									 			# Duration in seconds
     urgency = 'normal'
 	).send()
 	f = open("History.txt", "a")
-	f.write(f"{track} - {artists}\n")
+	f.write(f"{track.name} - {artists}\n")
 	f.close()
 
 def get_image(image_url, song):
@@ -297,39 +265,6 @@ def get_image(image_url, song):
 	with open(os.path.join(melodine_dir, 'cover_art_dir', f'{song}.png'), 'wb') as le_image:
 		le_image.write(image_data.content)
 
-def get_metadata(song_name):
-	try:
-		search_str = song_name
-
-		spot = spotipy.Spotify(client_credentials_manager = SpotifyClientCredentials(CLIENT_ID, CLIENT_SECRET))
-
-		track = spot.search(search_str)
-
-		quality = ['high', 'mid', 'low']
-		counter = 0
-		images = {}
-
-		for image_dict in track['tracks']['items'][0]['album']['images']:
-
-			images[quality[counter]] = image_dict['url']
-			counter += 1
-
-		album_name = track['tracks']['items'][0]['album']['name']
-
-		artists = []
-		artists_list = track['tracks']['items'][0]['artists']
-		for dictionary in artists_list:
-			artists.append(dictionary['name'])
-		artists = ' & '.join(artists)
-
-		track_name = track['tracks']['items'][0]['name']
-
-		if os.name == 'nt':
-			images = None
-
-		return images, album_name, artists, track_name
-	except Exception:
-		return None, None, song_name.split(' ')[0], song_name
 #endregion
 #region Management
 

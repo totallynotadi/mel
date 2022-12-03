@@ -16,7 +16,7 @@ from fuzzysearch import find_near_matches
 
 
 # Client Keys
-with open("client_keys.json", "r") as keys:
+with open("../src/client_keys.json", "r") as keys:
     client_keys = json.loads(keys.read())
     try:
         if client_keys["personal"]["CLIENT_ID"] and client_keys["personal"]["CLIENT_SECRET"]:
