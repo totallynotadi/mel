@@ -5,7 +5,6 @@ import melodine as melo
 import os
 import utils 
 import threading
-import discord_rpc
 print("""
 Welcome to Melodine. 
 Melodine is a simple command line tool to play and download music.
@@ -324,11 +323,6 @@ def ffplay(song):
 	print(track.artists[0].name)
 	player = MediaPlayer(os.path.join(os.path.expanduser('~'), 'Music', track.name + '.mp3'), loglevel='quiet')
 	utils.put_notification(track)
-	try:
-		discord_rpc.set_status(video.title, vid_url)
-		
-	except:	
-		pass
 	#threading._start_new_thread(discord_rpc.update_discord(), ())
 	'''player.toggle_pause()
 	time.sleep(1)
@@ -351,10 +345,6 @@ def ffplay(song):
 			player.toggle_pause()
 			time.sleep(1)
 			player.close_player()
-
-			try:
-				discord_rpc.set_status("nothing peeposad")
-			except:	pass
 			break
 		time.sleep(1)
 		last_pts = updated_pts
