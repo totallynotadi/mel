@@ -331,7 +331,6 @@ def ffplay(song):
 	updated_pts = 0
 	while True:
 		updated_pts = int(float(str(player.get_pts())[: 3])) - 3
-
 		while player.get_pause():
 			time.sleep(0.4)
 
