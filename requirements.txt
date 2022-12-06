@@ -6,3 +6,4 @@ fuzzysearch
 pafy
 tqdm
 pypresence
+melodine>=0.1.0
