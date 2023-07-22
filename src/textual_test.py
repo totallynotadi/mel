@@ -14,8 +14,6 @@ class Search(Static):
         for result in results['tracks']:
             yield Static(result.name)
 
-class Result()
-
 class MelodineApp(App):
     """A Textual app to manage stopwatches."""
 
@@ -27,7 +25,6 @@ class MelodineApp(App):
         yield Header()
         yield Footer()
         yield Container(Search())
-        yield Container
 
 if __name__ == "__main__":
     app = MelodineApp()
